@@ -1,13 +1,15 @@
 cmake_minimum_required(VERSION 3.29)
 project(wiredolphin)
 
-set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 COMPONENTS Core Gui Widgets REQUIRED)
+project(untitled VERSION 0.1 LANGUAGES CXX)
 
+include_directories(include)
 add_executable(wiredolphin
         main.cpp
         include/packetsource.h
@@ -24,12 +26,26 @@ add_executable(wiredolphin
         src/interface.cpp
 )
 
-include_directories(include)
+find_package(Qt6 COMPONENTS Core Gui Widgets REQUIRED)
 target_link_libraries(wiredolphin PRIVATE Qt::Core Qt::Gui Qt::Widgets pcap)
 target_link_directories(wiredolphin PRIVATE /opt/homebrew/opt/libpcap/lib)
 target_include_directories(wiredolphin PRIVATE /opt/homebrew/opt/libpcap/include)
 
-set_target_properties(wiredolphin PROPERTIES OUTPUT_NAME wiredolphin INSTALL_PATH "./libs")
+set_target_properties(wiredolphin PROPERTIES
+        ${BUNDLE_ID_OPTION}
+        MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+        MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+        MACOSX_BUNDLE TRUE
+        WIN32_EXECUTABLE TRUE
+)
+
+include(GNUInstallDirs)
+qt_finalize_executable(wiredolphin)
+install(TARGETS wiredolphin
+        BUNDLE DESTINATION .
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
 
 add_executable(wiredolphin-cli
         src/interface.cpp
@@ -40,12 +56,3 @@ add_executable(wiredolphin-cli
 target_link_libraries(wiredolphin-cli PRIVATE pcap)
 target_link_directories(wiredolphin-cli PRIVATE /opt/homebrew/opt/libpcap/lib)
 target_include_directories(wiredolphin-cli PRIVATE /opt/homebrew/opt/libpcap/include)
-
-qt_finalize_executable(wiredolphin)
-
-include(GNUInstallDirs)
-install(PROGRAMS $<TARGET_FILE:wiredolphin> TYPE BIN)
-install(DIRECTORY "${CMAKE_BINARY_DIR}/qtDeploy/" TYPE BIN)
-set(CPACK_GENERATOR "ZIP;DMG")
-
-include(CPack)
