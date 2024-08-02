@@ -30,6 +30,7 @@ public:
     void resetCapture();
     void acceptPacket(int index) const;
     void initSlots();
+    void tableItemClicked(const QModelIndex& index);
     void toggleStartBtn();
     void initWidgets();
     void updateCaptureStatusLabel() const;
@@ -45,4 +46,8 @@ private:
     QLabel* interfaceStatusLabel = new QLabel("", this);
     QLabel* captureStatusLabel = new QLabel("", this);
     chrono::time_point<chrono::steady_clock> time_start;
+    QTreeWidgetItem* datalinkTree = nullptr;
+    QTreeWidgetItem* networkTree = nullptr;
+    QTreeWidgetItem* transportTree = nullptr;
+    QTreeWidgetItem* applicationTree = nullptr;
 };

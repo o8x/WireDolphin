@@ -33,16 +33,16 @@ void Packet::set_addr_dst(const string& addr_dst) {
     this->addr_dst = addr_dst;
 }
 
-string Packet::get_protocol() const {
-    return protocol;
+string Packet::get_type() const {
+    return type;
 }
 
-u_short Packet::get_protocol_flag() const {
-    return protocol_flag;
+u_short Packet::get_type_flag() const {
+    return type_flag;
 }
 
-void Packet::set_protocol(const string& protocol) {
-    this->protocol = protocol;
+void Packet::set_type(const string& type) {
+    this->type = type;
 }
 
 void Packet::set_len(const long len) {
@@ -61,8 +61,8 @@ void Packet::set_time(const string& time) {
     this->time = time;
 }
 
-void Packet::set_protocol_flag(u_short flag) {
-    this->protocol_flag = flag;
+void Packet::set_type_flag(u_short flag) {
+    this->type_flag = flag;
 }
 
 [[nodiscard]] const u_char* Packet::get_payload() const {
