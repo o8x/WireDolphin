@@ -134,11 +134,12 @@ void MainWindow::updateCaptureStatusLabel() const {
 
 void MainWindow::acceptPacket(const Packet& p) {
     ui->packetsTable->insertRow(ui->packetsTable->rowCount());
-    ui->packetsTable->setRowHeight(count, 18);
+    // ui->packetsTable->setRowHeight(count, 18);
     ui->packetsTable->setItem(count, 0, new QTableWidgetItem(QString::number(count)));
     ui->packetsTable->setItem(count, 1, new QTableWidgetItem(p.get_time().data()));
-    ui->packetsTable->setItem(count, 2, new QTableWidgetItem("TCP"));
+    ui->packetsTable->setItem(count, 2, new QTableWidgetItem(p.get_protocol().c_str()));
     ui->packetsTable->setItem(count, 3, new QTableWidgetItem(QString::number(p.get_len())));
+    ui->packetsTable->setItem(count, 4, new QTableWidgetItem(p.get_info().c_str()));
 
     count++;
     updateCaptureStatusLabel();

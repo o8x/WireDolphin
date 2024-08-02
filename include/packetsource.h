@@ -12,7 +12,8 @@ class PacketSource final : public QThread {
     pcap_if_t* device = nullptr;
     bool running = false;
     void run() override;
-    int parse_header(const pcap_pkthdr*) const;
+    static string byte_to_string(u_char* byte, int size);
+    static int parse_header(const u_char**, Packet& p);
 
 signals:
     void listen_started(std::string name, std::string message) const;

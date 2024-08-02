@@ -5,6 +5,7 @@
 #include <QtCore/qcoreapplication.h>
 
 #include "interface.h"
+#include "protocol.h"
 #include "utils.h"
 using namespace std;
 
@@ -31,10 +32,6 @@ void PacketSource::free() {
     }
 }
 
-int PacketSource::parse_header(const pcap_pkthdr* pkt_header) const {
-    return 1;
-}
-
 void PacketSource::run() {
     const string name = this->device->name;
 
@@ -51,17 +48,102 @@ void PacketSource::run() {
             continue;
         }
 
-        if (this->parse_header(pkt_header) == 0) {
+        Packet p;
+        if (parse_header(&pkt_data, p) == 0) {
             continue;
         }
 
-        Packet packet;
-        packet.set_len(pkt_header->len);
-        packet.set_caplen(pkt_header->caplen);
-        packet.set_time(format_timeval_to_string(pkt_header->ts));
+        p.set_time(format_timeval_to_string(pkt_header->ts));
+        p.set_payload(&pkt_data, sizeof(pkt_data));
 
-        emit this->accepted(packet);
+        emit this->accepted(p);
     }
 
     emit this->listen_stopped(name, "off");
+}
+
+string PacketSource::byte_to_string(u_char* byte, int size) {
+    std::ostringstream oss;
+    for (int i = 0; i < size; i++) {
+        oss << std::hex << ntohs(byte[i]);
+        if (i != size - 1) {
+            oss << ":";
+        }
+    }
+
+    return oss.str();
+}
+
+int PacketSource::parse_header(const u_char** pkt_data, Packet& p) {
+    ethernet_header* eth = (ETHERNET_HEADER*)*pkt_data;
+
+    p.set_link_src(byte_to_string(eth->link_src, 6));
+    p.set_link_dst(byte_to_string(eth->link_dst, 6));
+    // p.set_info(byte_to_string(eth->link_src, 6).append(" -> ").append(byte_to_string(eth->link_dst, 6)));
+
+    u_short type = ntohs(eth->type);
+    switch (type) {
+    case 0x0800:
+        p.set_protocol("IPv4");
+        p.set_protocol_flag(0x0800);
+        return 1;
+    case 0x0806:
+        p.set_protocol("ARP");
+        p.set_protocol_flag(0x0806);
+        return 1;
+    case 0x0808:
+        p.set_protocol("IARP");
+        p.set_protocol_flag(0x0808);
+        return 1;
+    case 0x8035:
+        p.set_protocol("RARP");
+        p.set_protocol_flag(0x8035);
+        return 1;
+    case 0x8100:
+        p.set_protocol("VLAN C-Tag");
+        p.set_protocol_flag(0x8100);
+        return 1;
+    case 0x814C:
+        p.set_protocol("SNMPoE");
+        p.set_protocol_flag(0x814C);
+        return 1;
+    case 0x86DD:
+        p.set_protocol("IPv6");
+        p.set_protocol_flag(0x86DD);
+        return 1;
+    case 0x876B:
+        p.set_protocol("TCP/IP");
+        p.set_protocol_flag(0x876B);
+        return 1;
+    case 0x8808:
+        p.set_protocol("EPON");
+        p.set_protocol_flag(0x8808);
+        return 1;
+    case 0x880B:
+        p.set_protocol("PPP");
+        p.set_protocol_flag(0x880B);
+        return 1;
+    case 0x8863:
+        p.set_protocol("PPPoE Discovery");
+        p.set_protocol_flag(0x8863);
+        return 1;
+    case 0x8864:
+        p.set_protocol("PPPoE Session");
+        p.set_protocol_flag(0x8864);
+        return 1;
+    case 0x88A8:
+        p.set_protocol("VLAN S-Tag");
+        p.set_protocol_flag(0x88A8);
+        return 1;
+    case 0x88CC:
+        p.set_protocol("LLDP");
+        p.set_protocol_flag(0x88CC);
+        return 1;
+    default:
+        p.set_protocol("");
+        p.set_protocol_flag(type);
+        return 1;
+    }
+
+    return 0;
 }

@@ -15,6 +15,7 @@ add_executable(wiredolphin
         include/Packet.h
         include/mainwindow.h
         include/interface.h
+        include/protocol.h
         src/packetsource.cpp
         src/utils/utils.cpp
         src/packet.cpp
