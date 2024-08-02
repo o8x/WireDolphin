@@ -24,10 +24,11 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
     void changeInterfaceIndex(int index);
-    void captureInterfaceStarted(std::string name, std::string message);
-    void captureInterfaceStopped(std::string name, std::string message);
+    void freePackets();
+    void captureInterfaceStarted(string name, string message);
+    void captureInterfaceStopped(string name, string message) const;
     void resetCapture();
-    void acceptPacket(const Packet&);
+    void acceptPacket(int index) const;
     void initSlots();
     void toggleStartBtn();
     void initWidgets();
@@ -38,9 +39,10 @@ private:
     Ui::MainWindow* ui;
     pcap_if_t* allDevs;
     PacketSource* packetHandler;
+    vector<Packet*> packets;
     bool captureStart = false;
     char error_buffer[PCAP_ERRBUF_SIZE];
     QLabel* interfaceStatusLabel = new QLabel("", this);
     QLabel* captureStatusLabel = new QLabel("", this);
-    int count;
+    chrono::time_point<chrono::steady_clock> time_start;
 };

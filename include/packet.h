@@ -1,11 +1,13 @@
 #pragma once
 
+#include <iostream>
 #include <string>
 #include <pcap.h>
 using namespace std;
 
 class Packet {
     long len = 0;
+    u_short protocol_flag{};
     const u_char* payload = nullptr;
     string time;
     string link_src;
@@ -14,7 +16,6 @@ class Packet {
     string addr_dst;
     string protocol;
     string info;
-    u_short protocol_flag;
 
 public:
     [[nodiscard]] long get_len() const;
@@ -37,5 +38,5 @@ public:
     void set_info(const string& info);
     void set_time(const string& time);
     void set_protocol_flag(u_short);
-    void set_payload(const u_char** payload, int size);
+    void set_payload(const u_char* payload);
 };

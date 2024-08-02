@@ -8,20 +8,23 @@
 class PacketSource final : public QThread {
     Q_OBJECT
 
+    vector<Packet*>* packetsPtr;
     pcap_t* interface = nullptr;
     pcap_if_t* device = nullptr;
     bool running = false;
     void run() override;
     static string byte_to_string(u_char* byte, int size);
-    static int parse_header(const u_char**, Packet& p);
+    static int parse_header(const u_char**, Packet*& p);
+
 
 signals:
     void listen_started(std::string name, std::string message) const;
     void listen_stopped(std::string name, std::string message) const;
-    void accepted(Packet);
+    void packet_pushed(size_t);
 
 public:
-    explicit PacketSource(QObject* parent = nullptr) : QThread(parent) {
+    explicit PacketSource(QObject* parent = nullptr, vector<Packet*>* packets = nullptr):
+        QThread(parent), packetsPtr(packets) {
     }
 
     void init(pcap_if_t* device, pcap_t* interface);

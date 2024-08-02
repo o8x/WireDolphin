@@ -61,8 +61,8 @@ void Packet::set_time(const string& time) {
     this->time = time;
 }
 
-void Packet::set_protocol_flag(u_short) {
-    this->protocol_flag = protocol_flag;
+void Packet::set_protocol_flag(u_short flag) {
+    this->protocol_flag = flag;
 }
 
 [[nodiscard]] const u_char* Packet::get_payload() const {
@@ -77,8 +77,6 @@ void Packet::set_info(const string& info) {
     this->info = info;
 }
 
-void Packet::set_payload(const u_char** payload, int size) {
-    this->payload = *payload;
-
-    memcpy((char*)this->payload, payload, size);
+void Packet::set_payload(const u_char* payload) {
+    this->payload = payload;
 }
