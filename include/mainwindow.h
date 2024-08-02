@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QTreeWidgetItem>
 #include <QMainWindow>
 #include <QLabel>
 #include <QStandardItemModel>
