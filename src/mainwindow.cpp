@@ -29,6 +29,7 @@ MainWindow::~MainWindow() {
     delete interfaceStatusLabel;
     delete packetHandler;
     delete captureStatusLabel;
+    delete frame;
     delete datalinkTree;
     delete networkTree;
     delete transportTree;
@@ -129,16 +130,18 @@ void MainWindow::initWidgets() {
     ui->bpfEditor->setPlaceholderText(" filter expression");
 
     QFont font("", 12, QFont::Normal);
-    QStringList title = {"NO.", "Time", "Protocol", "Len", "Info",};
+    QStringList title = {"NO.", "Time", "Source", "Destination", "Protocol", "Len", "Info",};
     ui->packetsTable->setColumnCount(title.length());
     ui->packetsTable->setFont(font);
     ui->packetsTable->setRowCount(0);
     ui->packetsTable->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
-    ui->packetsTable->setColumnWidth(0, 60);
-    ui->packetsTable->setColumnWidth(1, 200);
-    ui->packetsTable->setColumnWidth(2, 60);
-    ui->packetsTable->setColumnWidth(3, 60);
-    ui->packetsTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::Stretch);
+    ui->packetsTable->setColumnWidth(0, 50);
+    ui->packetsTable->setColumnWidth(1, 120);
+    ui->packetsTable->setColumnWidth(2, 110);
+    ui->packetsTable->setColumnWidth(3, 110);
+    ui->packetsTable->setColumnWidth(4, 60);
+    ui->packetsTable->setColumnWidth(5, 60);
+    ui->packetsTable->horizontalHeader()->setSectionResizeMode(6, QHeaderView::Stretch);
     ui->packetsTable->setHorizontalHeaderLabels(title);
     ui->packetsTable->setShowGrid(false);
     ui->packetsTable->verticalHeader()->setVisible(false);
@@ -166,10 +169,12 @@ void MainWindow::acceptPacket(const int index) const {
     ui->packetsTable->insertRow(ui->packetsTable->rowCount());
     // ui->packetsTable->setRowHeight(count, 18);
     ui->packetsTable->setItem(index, 0, new QTableWidgetItem(QString::number(index)));
-    ui->packetsTable->setItem(index, 1, new QTableWidgetItem(packet->get_time().data()));
-    ui->packetsTable->setItem(index, 2, new QTableWidgetItem(packet->get_type().c_str()));
-    ui->packetsTable->setItem(index, 3, new QTableWidgetItem(QString::number(packet->get_len())));
-    ui->packetsTable->setItem(index, 4, new QTableWidgetItem(packet->get_info().c_str()));
+    ui->packetsTable->setItem(index, 1, new QTableWidgetItem(packet->get_time().substr(11).c_str()));
+    ui->packetsTable->setItem(index, 2, new QTableWidgetItem(packet->get_host_src().c_str()));
+    ui->packetsTable->setItem(index, 3, new QTableWidgetItem(packet->get_host_dst().c_str()));
+    ui->packetsTable->setItem(index, 4, new QTableWidgetItem(packet->get_type().c_str()));
+    ui->packetsTable->setItem(index, 5, new QTableWidgetItem(QString::number(packet->get_len())));
+    ui->packetsTable->setItem(index, 6, new QTableWidgetItem(packet->get_info().c_str()));
 
     updateCaptureStatusLabel();
 }
@@ -187,10 +192,21 @@ void MainWindow::initSlots() {
 void MainWindow::tableItemClicked(const QModelIndex& index) {
     auto packet = packets[index.row()];
 
+    delete frame;
     delete datalinkTree;
     delete networkTree;
     delete transportTree;
     delete applicationTree;
+
+    frame = new QTreeWidgetItem(ui->layerTree);
+    frame->setText(0, "frame");
+    frame->setExpanded(true);
+    frame->addChildren({
+        new QTreeWidgetItem(QStringList(string("timestamp: ").append(packet->get_time()).c_str())),
+        new QTreeWidgetItem(QStringList(string("length: ").append(to_string(packet->get_len())).c_str())),
+        new QTreeWidgetItem(QStringList(string("ethernet length: ").append(to_string(14)).c_str())),
+        new QTreeWidgetItem(QStringList(string("ipv4 length: ").append(to_string(packet->get_len() - 14)).c_str())),
+    });
 
     datalinkTree = new QTreeWidgetItem(ui->layerTree);
     datalinkTree->setText(0, "data link");
@@ -211,25 +227,64 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
     networkTree = new QTreeWidgetItem(ui->layerTree);
     networkTree->setText(0, "network");
     networkTree->setExpanded(true);
-    networkTree->addChildren({
-        new QTreeWidgetItem(QStringList(string("source: ").append(packet->get_link_src()).c_str())),
-        new QTreeWidgetItem(QStringList(string("destination: ").append(packet->get_link_dst()).c_str())),
-    });
+    if (packet->get_ip_version() == 6) {
+        ipv6_header* v6 = packet->get_ipv6();
+        networkTree->addChildren({
+            new QTreeWidgetItem(
+                QStringList(string("version: ipv6").c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("source: ").append(packet->get_host_src()).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("destination: ").append(packet->get_host_dst()).c_str())),
+            new QTreeWidgetItem(QStringList(string("class: ").append("[x] analysis not supported").c_str())),
+            new QTreeWidgetItem(QStringList(string("flow label: ").append("[x] analysis not supported").c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("next header: ").append(to_string(v6->next_header)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("hop limit: ").append(to_string(v6->hop_limit)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("payload length: ").append(to_string(v6->payload_length)).c_str())),
+            new QTreeWidgetItem(QStringList(string("options: ").append("[x] analysis not supported").c_str())),
+        });
+    } else {
+        ipv4_header* v4 = packet->get_ipv4();
+        networkTree->addChildren({
+            new QTreeWidgetItem(
+                QStringList(string("version: ipv").append(to_string((v4->version_ihl & 0xf0) >> 4)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("source: ").append(packet->get_host_src()).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("destination: ").append(packet->get_host_dst()).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("ihl: ").append(to_string(v4->version_ihl & 0xf)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("service type: ").append(to_string(v4->type_of_service)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("identifier: ").append(to_string(v4->identification)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("fragment_offset: ").append(to_string(v4->flags_fragment)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("time to live: ").append(to_string(v4->time_to_live)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("protocol: ").append(to_string(v4->protocol)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("checksum: ").append(to_string(v4->header_checksum)).c_str())),
+            new QTreeWidgetItem(QStringList(string("options: ").append("[x] analysis not supported").c_str())),
+        });
+    }
 
     transportTree = new QTreeWidgetItem(ui->layerTree);
     transportTree->setText(0, "transport");
     transportTree->setExpanded(true);
     transportTree->addChildren({
-        new QTreeWidgetItem(QStringList(string("source: ").append(packet->get_link_src()).c_str())),
-        new QTreeWidgetItem(QStringList(string("destination: ").append(packet->get_link_dst()).c_str())),
+        new QTreeWidgetItem(QStringList(string("[x] analysis not supported").c_str())),
     });
 
     applicationTree = new QTreeWidgetItem(ui->layerTree);
     applicationTree->setText(0, "application");
     applicationTree->setExpanded(true);
     applicationTree->addChildren({
-        new QTreeWidgetItem(QStringList(string("source: ").append(packet->get_link_src()).c_str())),
-        new QTreeWidgetItem(QStringList(string("destination: ").append(packet->get_link_dst()).c_str())),
+        new QTreeWidgetItem(QStringList(string("[x] analysis not supported").c_str())),
     });
 }
 

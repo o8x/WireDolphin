@@ -53,6 +53,7 @@ void PacketSource::run() {
             continue;
         }
 
+        p->set_len(pkt_header->len);
         p->set_time(format_timeval_to_string(pkt_header->ts));
         p->set_payload(pkt_data);
 
@@ -64,31 +65,123 @@ void PacketSource::run() {
     emit this->listen_stopped(name, "off");
 }
 
-string PacketSource::byte_to_string(u_char* byte, int size) {
-    std::ostringstream oss;
-    for (int i = 0; i < size; i++) {
-        // 因为是 ASCII 字符，所以只需要十六进制的前两位即可，大端序取高八位就是前两位，再转换网络序就可以获得char的数字
-        oss << std::hex << ntohs(byte[i] << 8);
-        if (i != size - 1) {
-            oss << ":";
-        }
-    }
-
-    return oss.str();
-}
-
 int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
     ethernet_header* eth = (ETHERNET_HEADER*)*pkt_data;
 
-    p->set_link_src(byte_to_string(eth->link_src, 6));
-    p->set_link_dst(byte_to_string(eth->link_dst, 6));
+    p->set_link_src(bytes_to_ascii(eth->link_src, 6, ":"));
+    p->set_link_dst(bytes_to_ascii(eth->link_dst, 6, ":"));
+
 
     u_short type = ntohs(eth->type);
     switch (type) {
-    case 0x0800:
+    case 0x0800: {
         p->set_type("IPv4");
         p->set_type_flag(0x0800);
+
+        // 放入堆中，避免被回收
+        ipv4_header* ipv4 = new IPV4_HEADER;
+        memcpy(ipv4, *pkt_data + sizeof(ethernet_header), sizeof(ipv4_header));
+
+        // IPv4 长度，即以太网载荷长度
+        ipv4->total_length = ntohs(ipv4->total_length);
+        ipv4->header_checksum = ntohs(ipv4->header_checksum);
+        ipv4->identification = ntohs(ipv4->identification);
+
+        p->set_ipv4(ipv4);
+        p->set_host_src(string(to_string(int(ipv4->source_address[0]))).
+                        append(".").
+                        append(to_string(int(ipv4->source_address[1]))).append(".").
+                        append(to_string(int(ipv4->source_address[2]))).append(".").
+                        append(to_string(int(ipv4->source_address[3]))));
+        p->set_host_dst(string(to_string(int(ipv4->dest_address[0]))).
+                        append(".").
+                        append(to_string(int(ipv4->dest_address[1]))).append(".").
+                        append(to_string(int(ipv4->dest_address[2]))).append(".").
+                        append(to_string(int(ipv4->dest_address[3]))));
+
+        switch (ipv4->protocol) {
+        case 0:
+            p->set_type("-");
+            break;
+        case 1:
+            p->set_type("ICMP");
+            break;
+        case 2:
+            p->set_type("IGMP");
+            break;
+        case 3:
+            p->set_type("GGP");
+            break;
+        case 4:
+            p->set_type("IP in IP");
+            break;
+        case 6:
+            p->set_type("TCP");
+            break;
+        case 17:
+            p->set_type("UDP");
+            break;
+        case 20:
+            p->set_type("HMP");
+            break;
+        case 27:
+            p->set_type("RDP");
+            break;
+        case 46:
+            p->set_type("RSVP");
+            break;
+        case 47:
+            p->set_type("GRE");
+            break;
+        case 50:
+            p->set_type("ESP");
+            break;
+        case 51:
+            p->set_type("AH");
+            break;
+        case 54:
+            p->set_type("NARP");
+            break;
+        case 58:
+            p->set_type("IPv6-ICMP");
+            break;
+        case 59:
+            p->set_type("IPv6-NoNxt");
+            break;
+        case 60:
+            p->set_type("IPv6-Opts");
+            break;
+        case 89:
+            p->set_type("OSPF");
+            break;
+        case 112:
+            p->set_type("VRRP");
+            break;
+        case 115:
+            p->set_type("L2TP");
+            break;
+        case 124:
+            p->set_type("ISIS");
+            break;
+        case 126:
+            p->set_type("CRTP");
+            break;
+        case 127:
+            p->set_type("CRUDP");
+            break;
+        case 132:
+            p->set_type("SCTP");
+            break;
+        case 136:
+            p->set_type("UDPLite");
+            break;
+        case 137:
+            p->set_type("MPLS-in-IP");
+            break;
+        }
+
         return 1;
+    }
     case 0x0806:
         p->set_type("ARP");
         p->set_type_flag(0x0806);
@@ -109,10 +202,89 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
         p->set_type("SNMPoE");
         p->set_type_flag(0x814C);
         return 1;
-    case 0x86DD:
+    case 0x86DD: {
         p->set_type("IPv6");
         p->set_type_flag(0x86DD);
+
+        ipv6_header* ipv6 = new IPV6_HEADER;
+        memcpy(ipv6, *pkt_data + sizeof(ethernet_header), sizeof(ipv6_header));
+
+        ipv6->payload_length = ntohs(ipv6->payload_length);
+        p->set_ipv6(ipv6);
+        p->set_host_src(bytes_to_string(ipv6->src_host, 16, ":"));
+        p->set_host_dst(bytes_to_string(ipv6->dest_host, 16, ":"));
+
+        switch (ipv6->next_header) {
+        case 0:
+            p->set_type("Hop-by-Hop");
+            break;
+        case 1:
+            p->set_type("ICMP6");
+            break;
+        case 2:
+            p->set_type("IGMP6");
+            break;
+        case 3:
+            p->set_type("GGP6");
+            break;
+        case 4:
+            p->set_type("IPv4e");
+            break;
+        case 5:
+            p->set_type("Stream");
+            break;
+        case 6:
+            p->set_type("TCP6");
+            break;
+        case 7:
+            p->set_type("CBT");
+            break;
+        case 8:
+            p->set_type("EGP");
+            break;
+        case 9:
+            p->set_type("IGP");
+            break;
+        case 10:
+            p->set_type("BBN");
+            break;
+        case 11:
+            p->set_type("NVP");
+            break;
+        case 12:
+            p->set_type("PUP");
+            break;
+        case 13:
+            p->set_type("ARGUS");
+            break;
+        case 14:
+            p->set_type("EMCON");
+            break;
+        case 15:
+            p->set_type("XNET");
+            break;
+        case 16:
+            p->set_type("CHAOS");
+            break;
+        case 17:
+            p->set_type("UDP6");
+            break;
+        case 18:
+            p->set_type("MUX");
+            break;
+        case 19:
+            p->set_type("DC-MEAS");
+            break;
+        case 20:
+            p->set_type("HMP");
+            break;
+        case 21:
+            p->set_type("PRM");
+            break;
+        }
+
         return 1;
+    }
     case 0x876B:
         p->set_type("TCP/IP");
         p->set_type_flag(0x876B);

@@ -47,6 +47,7 @@ private:
     QLabel* interfaceStatusLabel = new QLabel("", this);
     QLabel* captureStatusLabel = new QLabel("", this);
     chrono::time_point<chrono::steady_clock> time_start;
+    QTreeWidgetItem* frame = nullptr;
     QTreeWidgetItem* datalinkTree = nullptr;
     QTreeWidgetItem* networkTree = nullptr;
     QTreeWidgetItem* transportTree = nullptr;

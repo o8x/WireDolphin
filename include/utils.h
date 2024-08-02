@@ -1,6 +1,14 @@
 #pragma once
 
+#include <iostream>
 #include <string>
 using namespace std;
 
 string format_timeval_to_string(const timeval&);
+
+/**
+ * 字节数据转 ASCII 字符串
+ */
+string bytes_to_ascii(const u_char* byte, int size, const string& spliter = " ");
+string bytes_to_string(const u_char* byte, int size, const string& spliter);
+string byte_to_ascii(const u_char byte);

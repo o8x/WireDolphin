@@ -15,3 +15,34 @@ string format_timeval_to_string(const timeval& tv) {
 
     return oss.str();
 }
+
+string bytes_to_ascii(const u_char* byte, int size, const string& spliter) {
+    std::ostringstream oss;
+    for (int i = 0; i < size; i++) {
+        // 因为是 ASCII 字符，所以只需要十六进制的前两位即可，大端序取高八位就是前两位，再转换网络序就可以获得char的数字
+        oss << std::hex << ntohs(byte[i] << 8);
+        if (i != size - 1) {
+            oss << spliter;
+        }
+    }
+
+    return oss.str();
+}
+
+string bytes_to_string(const u_char* byte, int size, const string& spliter) {
+    std::ostringstream oss;
+    for (int i = 0; i < size; i++) {
+        oss << std::hex << ntohs(byte[i]);
+        if (i != size - 1) {
+            oss << spliter;
+        }
+    }
+
+    return oss.str();
+}
+
+string byte_to_ascii(const u_char byte) {
+    std::ostringstream oss;
+    oss << std::hex << ntohs(byte << 8);
+    return oss.str();
+}
