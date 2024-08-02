@@ -146,14 +146,26 @@ string get_dlt_desc(pcap_t* pc) {
     return pcap_datalink_val_to_description(dlt);
 }
 
-void print_stat_info(pcap_t* inet, const int packet_num) {
-    pcap_stat stats;
+void print_stat_info(pcap_t* inet, const size_t packet_num, chrono::time_point<chrono::steady_clock> time_start) {
+    pcap_stat stats{};
     pcap_stats(inet, &stats);
 
+    auto duration = std::chrono::high_resolution_clock::now() - time_start;
+
+    // 将时长转换为需要的单位，这里以秒为例
+    auto duration_in_seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+
     // 开始时间和结束时间
-    std::cout << "> " << packet_num << " captured" << std::endl;
+    std::cout << "> " << packet_num << " captured in " << duration_in_seconds << " seconds" << std::endl;
     std::cout << "> " << stats.ps_recv << " received by filter" << std::endl;
-    std::cout << "> " << stats.ps_ifdrop << " dropped by interface" << std::endl;
-    std::cout << "> " << stats.ps_drop << " dropped by kernel" << std::endl;
+
+    if (stats.ps_ifdrop > 0) {
+        std::cout << "> " << stats.ps_ifdrop << " dropped by interface" << std::endl;
+    }
+
+    if (stats.ps_drop > 0) {
+        std::cout << "> " << stats.ps_drop << " dropped by kernel" << std::endl;
+    }
+
     std::cout << "..." << std::endl;
 }

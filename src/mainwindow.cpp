@@ -12,8 +12,8 @@ using namespace std;
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
 
-    count = 0;
-    packetHandler = new PacketSource(this);
+    packets = vector<Packet*>();
+    packetHandler = new PacketSource(this, &packets);
 
     initWidgets();
     initInterfaceList();
@@ -23,18 +23,40 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 MainWindow::~MainWindow() {
     packetHandler->free();
     pcap_freealldevs(allDevs);
+    freePackets();
 
     delete ui;
     delete interfaceStatusLabel;
     delete packetHandler;
     delete captureStatusLabel;
+    delete datalinkTree;
+    delete networkTree;
+    delete transportTree;
+    delete applicationTree;
 }
 
 void MainWindow::changeInterfaceIndex(int index) {
     ui->startBtn->setDisabled(index == 0);
 }
 
+void MainWindow::freePackets() {
+    // 使用智能指针可以避免手动 delete 过程
+    // 但是现在不知道智能指针的原理，暂时先手动释放
+    // auto packets = vector<std::shared_ptr<Packet>>();
+    // auto x = std::make_shared<Packet>();
+    for_each(packets.begin(), packets.end(), [](Packet* p) {
+        delete p;
+    });
+
+    // 回收内存
+    packets.clear();
+    vector<Packet*>().swap(packets);
+}
+
 void MainWindow::captureInterfaceStarted(string name, string message) {
+    freePackets();
+
+    time_start = std::chrono::high_resolution_clock::now();
     ui->interfaceList->setDisabled(true);
     ui->startBtn->setDisabled(false);
     ui->resetBtn->setDisabled(false);
@@ -42,16 +64,17 @@ void MainWindow::captureInterfaceStarted(string name, string message) {
     ui->packetsTable->clearContents();
     ui->packetsTable->setRowCount(0);
 
+    ui->layerTree->clear();
     interfaceStatusLabel->setText(name.append(": ").append(message).c_str());
+    updateCaptureStatusLabel();
 }
 
-void MainWindow::captureInterfaceStopped(string name, string message) {
+void MainWindow::captureInterfaceStopped(string name, string message) const {
     ui->interfaceList->setDisabled(false);
     ui->resetBtn->setDisabled(true);
     ui->startBtn->setText("Start");
     interfaceStatusLabel->setText(name.append(": ").append(message).c_str());
 
-    count = 0;
     updateCaptureStatusLabel();
 }
 
@@ -83,7 +106,7 @@ void MainWindow::toggleStartBtn() {
         return;
     }
 
-    print_stat_info(packetHandler->get_interface(), count);
+    print_stat_info(packetHandler->get_interface(), packets.size(), time_start);
 
     packetHandler->free();
     packetHandler->wait();
@@ -113,35 +136,41 @@ void MainWindow::initWidgets() {
     ui->packetsTable->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
     ui->packetsTable->setColumnWidth(0, 60);
     ui->packetsTable->setColumnWidth(1, 200);
-    ui->packetsTable->setColumnWidth(2, 50);
-    ui->packetsTable->setColumnWidth(3, 50);
+    ui->packetsTable->setColumnWidth(2, 60);
+    ui->packetsTable->setColumnWidth(3, 60);
     ui->packetsTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::Stretch);
     ui->packetsTable->setHorizontalHeaderLabels(title);
     ui->packetsTable->setShowGrid(false);
     ui->packetsTable->verticalHeader()->setVisible(false);
     ui->packetsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->packetsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    // 树视图
+    ui->layerTree->expandAll();
+    ui->layerTree->setHeaderLabel("layers");
 }
 
 void MainWindow::updateCaptureStatusLabel() const {
-    if (count == 0) {
+    if (packets.empty()) {
         captureStatusLabel->setText("");
         return;
     }
 
-    captureStatusLabel->setText("packets: " + QString::number(count) + "/" + QString::number(count));
+    size_t size = packets.size();
+    captureStatusLabel->setText("packets: " + QString::number(size) + "/" + QString::number(packets.size()));
 }
 
-void MainWindow::acceptPacket(const Packet& p) {
+void MainWindow::acceptPacket(const int index) const {
+    auto packet = packets[index];
+
     ui->packetsTable->insertRow(ui->packetsTable->rowCount());
     // ui->packetsTable->setRowHeight(count, 18);
-    ui->packetsTable->setItem(count, 0, new QTableWidgetItem(QString::number(count)));
-    ui->packetsTable->setItem(count, 1, new QTableWidgetItem(p.get_time().data()));
-    ui->packetsTable->setItem(count, 2, new QTableWidgetItem(p.get_protocol().c_str()));
-    ui->packetsTable->setItem(count, 3, new QTableWidgetItem(QString::number(p.get_len())));
-    ui->packetsTable->setItem(count, 4, new QTableWidgetItem(p.get_info().c_str()));
+    ui->packetsTable->setItem(index, 0, new QTableWidgetItem(QString::number(index)));
+    ui->packetsTable->setItem(index, 1, new QTableWidgetItem(packet->get_time().data()));
+    ui->packetsTable->setItem(index, 2, new QTableWidgetItem(packet->get_type().c_str()));
+    ui->packetsTable->setItem(index, 3, new QTableWidgetItem(QString::number(packet->get_len())));
+    ui->packetsTable->setItem(index, 4, new QTableWidgetItem(packet->get_info().c_str()));
 
-    count++;
     updateCaptureStatusLabel();
 }
 
@@ -151,7 +180,57 @@ void MainWindow::initSlots() {
     connect(ui->interfaceList, &QComboBox::currentIndexChanged, this, &MainWindow::changeInterfaceIndex);
     connect(packetHandler, &PacketSource::listen_started, this, &MainWindow::captureInterfaceStarted);
     connect(packetHandler, &PacketSource::listen_stopped, this, &MainWindow::captureInterfaceStopped);
-    connect(packetHandler, &PacketSource::accepted, this, &MainWindow::acceptPacket);
+    connect(packetHandler, &PacketSource::packet_pushed, this, &MainWindow::acceptPacket);
+    connect(ui->packetsTable, &QTableWidget::clicked, this, &MainWindow::tableItemClicked);
+}
+
+void MainWindow::tableItemClicked(const QModelIndex& index) {
+    auto packet = packets[index.row()];
+
+    delete datalinkTree;
+    delete networkTree;
+    delete transportTree;
+    delete applicationTree;
+
+    datalinkTree = new QTreeWidgetItem(ui->layerTree);
+    datalinkTree->setText(0, "data link");
+    datalinkTree->setExpanded(true);
+    datalinkTree->addChildren({
+        new QTreeWidgetItem(QStringList(string("source: ").append(packet->get_link_src()).c_str())),
+        new QTreeWidgetItem(QStringList(string("destination: ").append(packet->get_link_dst()).c_str())),
+        new QTreeWidgetItem(QStringList(
+            string("type: ").
+            append(packet->get_type()).
+            append("(hex:").
+            append(to_string(packet->get_type_flag())).
+            append(")").
+            c_str()
+        )),
+    });
+
+    networkTree = new QTreeWidgetItem(ui->layerTree);
+    networkTree->setText(0, "network");
+    networkTree->setExpanded(true);
+    networkTree->addChildren({
+        new QTreeWidgetItem(QStringList(string("source: ").append(packet->get_link_src()).c_str())),
+        new QTreeWidgetItem(QStringList(string("destination: ").append(packet->get_link_dst()).c_str())),
+    });
+
+    transportTree = new QTreeWidgetItem(ui->layerTree);
+    transportTree->setText(0, "transport");
+    transportTree->setExpanded(true);
+    transportTree->addChildren({
+        new QTreeWidgetItem(QStringList(string("source: ").append(packet->get_link_src()).c_str())),
+        new QTreeWidgetItem(QStringList(string("destination: ").append(packet->get_link_dst()).c_str())),
+    });
+
+    applicationTree = new QTreeWidgetItem(ui->layerTree);
+    applicationTree->setText(0, "application");
+    applicationTree->setExpanded(true);
+    applicationTree->addChildren({
+        new QTreeWidgetItem(QStringList(string("source: ").append(packet->get_link_src()).c_str())),
+        new QTreeWidgetItem(QStringList(string("destination: ").append(packet->get_link_dst()).c_str())),
+    });
 }
 
 void MainWindow::initInterfaceList() {

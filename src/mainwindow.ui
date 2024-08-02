@@ -210,7 +210,7 @@
              <property name="orientation">
               <enum>Qt::Orientation::Vertical</enum>
              </property>
-             <widget class="QTreeWidget" name="packetLayers">
+             <widget class="QTreeWidget" name="layerTree">
               <column>
                <property name="text">
                 <string notr="true">1</string>
