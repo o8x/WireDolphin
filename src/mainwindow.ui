@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1290</width>
-    <height>783</height>
+    <width>1608</width>
+    <height>965</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -217,7 +217,7 @@
                </property>
               </column>
              </widget>
-             <widget class="QTextEdit" name="hexView"/>
+             <widget class="QTableWidget" name="hexTable"/>
             </widget>
            </item>
           </layout>

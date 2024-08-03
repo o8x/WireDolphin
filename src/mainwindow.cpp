@@ -1,12 +1,23 @@
 #include <iostream>
 #include <QMessageBox>
+#include <QMenu>
 
 #include "mainwindow.h"
 #include "interface.h"
 #include "packetsource.h"
 #include "ui_MainWindow.h"
+#include "utils.h"
 
 using namespace std;
+
+#ifdef __WINDOWS__
+#define HEX_TABLE_FONT "courier"
+#else
+#define HEX_TABLE_FONT "monospace"
+#endif
+
+#define HEX_TABLE_FONT_SIZE 9
+#define HEX_TABLE_SIDE_LENGTH 23
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
@@ -33,6 +44,7 @@ MainWindow::~MainWindow() {
     delete networkTree;
     delete transportTree;
     delete applicationTree;
+    delete hexTableMenu;
 }
 
 void MainWindow::changeInterfaceIndex(int index) const {
@@ -63,6 +75,8 @@ void MainWindow::captureInterfaceStarted(string name, string message) {
     ui->startBtn->setText("Stop");
     ui->packetsTable->clearContents();
     ui->packetsTable->setRowCount(0);
+    ui->hexTable->clearContents();
+    ui->hexTable->setRowCount(0);
 
     ui->layerTree->clear();
     interfaceStatusLabel->setText(name.append(": ").append(message).c_str());
@@ -112,7 +126,7 @@ void MainWindow::toggleStartBtn() {
     packetHandler->wait();
 }
 
-void MainWindow::initWidgets() const {
+void MainWindow::initWidgets() {
     // 设置默认拉伸因子，表格占 2/3，树占 1/3
     ui->detailSplitter->setStretchFactor(0, 2);
     ui->detailSplitter->setStretchFactor(1, 1);
@@ -128,12 +142,11 @@ void MainWindow::initWidgets() const {
     ui->resetBtn->setDisabled(true);
     ui->bpfEditor->setPlaceholderText(" filter expression");
 
-    const QFont font("", 12, QFont::Normal);
     const QStringList title = {
         "NO.", "Time", "Source", "Destination", "Protocol", "Len", "Info",
     };
     ui->packetsTable->setColumnCount(title.length());
-    ui->packetsTable->setFont(font);
+    ui->packetsTable->setFont(QFont("", 11, QFont::Normal));
     ui->packetsTable->setRowCount(0);
     ui->packetsTable->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
     ui->packetsTable->setColumnWidth(0, 50);
@@ -145,6 +158,7 @@ void MainWindow::initWidgets() const {
     ui->packetsTable->horizontalHeader()->setSectionResizeMode(6, QHeaderView::Stretch);
     ui->packetsTable->setHorizontalHeaderLabels(title);
     ui->packetsTable->setShowGrid(false);
+    // 系统自带的行号
     ui->packetsTable->verticalHeader()->setVisible(false);
     ui->packetsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->packetsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -152,6 +166,29 @@ void MainWindow::initWidgets() const {
     // 树视图
     ui->layerTree->expandAll();
     ui->layerTree->setHeaderLabel("layers");
+
+    // hex 查看器
+    const int colCount = 17;
+    ui->hexTable->setRowCount(0);
+    ui->hexTable->setColumnCount(colCount);
+    ui->hexTable->setFont(QFont("", HEX_TABLE_FONT_SIZE, QFont::Normal));
+    ui->hexTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
+    ui->hexTable->horizontalHeader()->setHidden(true);
+    ui->hexTable->horizontalHeader()->setVisible(false);
+    ui->hexTable->setShowGrid(false);
+    ui->hexTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->hexTable->setStyleSheet("QTableWidget::item{padding:0px; border:0px;}");
+    for (int i = 0; i < colCount; i++) {
+        ui->hexTable->setColumnWidth(i, HEX_TABLE_SIDE_LENGTH);
+    }
+
+    // 开启自定义右键菜单
+    ui->hexTable->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    // TODO 回调函数
+    hexTableMenu = new QMenu(ui->hexTable);
+    hexTableMenu->addAction(new QAction("as HEX"));
+    hexTableMenu->addAction("as ASCII");
 }
 
 void MainWindow::updateCaptureStatusLabel() const {
@@ -167,8 +204,8 @@ void MainWindow::updateCaptureStatusLabel() const {
 void MainWindow::acceptPacket(const int index) const {
     auto packet = packets[index];
 
-    ui->packetsTable->insertRow(ui->packetsTable->rowCount());
-    // ui->packetsTable->setRowHeight(count, 18);
+    ui->packetsTable->insertRow(index);
+    ui->packetsTable->setRowHeight(index, 18);
     ui->packetsTable->setItem(index, 0, new QTableWidgetItem(QString::number(index)));
     ui->packetsTable->setItem(index, 1, new QTableWidgetItem(packet->get_time().substr(11).c_str()));
     ui->packetsTable->setItem(index, 2, new QTableWidgetItem(packet->get_host_src().c_str()));
@@ -188,6 +225,14 @@ void MainWindow::initSlots() {
     connect(packetHandler, &PacketSource::listen_stopped, this, &MainWindow::captureInterfaceStopped);
     connect(packetHandler, &PacketSource::packet_pushed, this, &MainWindow::acceptPacket);
     connect(ui->packetsTable, &QTableWidget::clicked, this, &MainWindow::tableItemClicked);
+    connect(ui->hexTable, &QTableWidget::customContextMenuRequested, this, &MainWindow::slotContextMenu);
+}
+
+void MainWindow::slotContextMenu(QPoint pos) {
+    auto index = ui->hexTable->indexAt(pos);
+    if (index.isValid()) {
+        hexTableMenu->exec(QCursor::pos());
+    }
 }
 
 void MainWindow::tableItemClicked(const QModelIndex& index) {
@@ -287,6 +332,30 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
     applicationTree->addChildren({
         new QTreeWidgetItem(QStringList(string("[x] analysis not supported").c_str())),
     });
+
+    // hex 查看器
+    ui->hexTable->clearContents();
+    ui->hexTable->setRowCount(0);
+
+    const u_char* payload = packet->get_payload();
+    int row = 0;
+    do {
+        ui->hexTable->insertRow(row);
+        ui->hexTable->setRowHeight(row, HEX_TABLE_SIDE_LENGTH);
+
+        // 填充格子
+        for (int j = 0; j < 16; j++) {
+            int ind = (row * 16) + j;
+            if (ind >= packet->get_len()) {
+                break;
+            }
+
+            // TODO 可能是错的，和 Tree 中的 mac 有可能对不上
+            ui->hexTable->setItem(row, j, new QTableWidgetItem(byte_to_ascii(payload[ind]).c_str()));
+        }
+
+        row++;
+    } while (row * 16 < packet->get_len());
 }
 
 void MainWindow::initInterfaceList() {

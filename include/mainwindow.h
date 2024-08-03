@@ -31,9 +31,10 @@ public:
     void resetCapture();
     void acceptPacket(int index) const;
     void initSlots();
+    void slotContextMenu(QPoint pos);
     void tableItemClicked(const QModelIndex& index);
     void toggleStartBtn();
-    void initWidgets() const;
+    void initWidgets();
     void updateCaptureStatusLabel() const;
     void initInterfaceList();
 
@@ -51,4 +52,5 @@ private:
     QTreeWidgetItem* networkTree = nullptr;
     QTreeWidgetItem* transportTree = nullptr;
     QTreeWidgetItem* applicationTree = nullptr;
+    QMenu* hexTableMenu = nullptr;
 };
