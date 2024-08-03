@@ -10,12 +10,14 @@ WireDolphin
 - [x] libpcap 抓包
 - [x] 优化 libpcap 性能
 - [x] 1000M 网络不丢包
-- [x] 二层协议解析
+- [x] 二层协议解析（数据链路层，以太网）
 - [x] 二层协议详情树
-- [x] 三层协议解析
+- [x] 三层协议解析（网络层，IPv4/IPv6/ICMP/ARP）
 - [x] 三层协议详情树
-- [ ] 四层协议解析
-- [ ] 四层协议详情树
+- [x] 四层协议解析（传输层，TCP/UDP）
+- [x] 四层协议详情树
+- [ ] 日志模块
+- [ ] #include #define 自动化格式化工具
 - [ ] ARP、ICMP、HTTP、DNS、socks5解析
 - [ ] HTTPS client hello 识别
 - [ ] 识别 TCP Flag、Seq、NextSeq、Window 等
