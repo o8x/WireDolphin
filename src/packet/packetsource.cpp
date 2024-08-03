@@ -1,12 +1,13 @@
-#include "packetsource.h"
-
 #include <iostream>
 #include <QDebug>
 #include <QtCore/qcoreapplication.h>
-
 #include "interface.h"
-#include "protocol.h"
+#include "dissectors/ethernet.h"
+#include "dissectors/ipv4.h"
+#include "dissectors/ipv6.h"
+#include "packetsource.h"
 #include "utils.h"
+
 using namespace std;
 
 void PacketSource::init(pcap_if_t* device, pcap_t* interface) {

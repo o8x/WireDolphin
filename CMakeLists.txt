@@ -17,13 +17,17 @@ add_executable(wiredolphin
         include/Packet.h
         include/mainwindow.h
         include/interface.h
-        include/protocol.h
-        src/packetsource.cpp
+        include/dissectors/ipv4.h
+        include/dissectors/ipv6.h
+        include/dissectors/ethernet.h
+        src/packet/packetsource.cpp
         src/utils/utils.cpp
-        src/packet.cpp
+        src/packet/packet.cpp
         src/mainwindow.cpp
         src/mainwindow.ui
         src/interface.cpp
+        src/dissectors/ipv4.cpp
+        src/dissectors/ipv6.cpp
 )
 
 find_package(Qt6 COMPONENTS Core Gui Widgets REQUIRED)

@@ -3,8 +3,9 @@
 #include <iostream>
 #include <string>
 #include <pcap.h>
+#include "dissectors/ipv4.h"
+#include "dissectors/ipv6.h"
 
-#include "protocol.h"
 using namespace std;
 
 class Packet {

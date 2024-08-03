@@ -2,7 +2,6 @@
 
 #include <QThread>
 #include <pcap.h>
-
 #include "packet.h"
 
 class PacketSource final : public QThread {

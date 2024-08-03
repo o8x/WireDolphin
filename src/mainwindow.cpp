@@ -2,7 +2,6 @@
 #include <QMessageBox>
 
 #include "mainwindow.h"
-
 #include "interface.h"
 #include "packetsource.h"
 #include "ui_MainWindow.h"
@@ -36,7 +35,7 @@ MainWindow::~MainWindow() {
     delete applicationTree;
 }
 
-void MainWindow::changeInterfaceIndex(int index) {
+void MainWindow::changeInterfaceIndex(int index) const {
     ui->startBtn->setDisabled(index == 0);
 }
 
@@ -113,7 +112,7 @@ void MainWindow::toggleStartBtn() {
     packetHandler->wait();
 }
 
-void MainWindow::initWidgets() {
+void MainWindow::initWidgets() const {
     // 设置默认拉伸因子，表格占 2/3，树占 1/3
     ui->detailSplitter->setStretchFactor(0, 2);
     ui->detailSplitter->setStretchFactor(1, 1);
@@ -129,8 +128,10 @@ void MainWindow::initWidgets() {
     ui->resetBtn->setDisabled(true);
     ui->bpfEditor->setPlaceholderText(" filter expression");
 
-    QFont font("", 12, QFont::Normal);
-    QStringList title = {"NO.", "Time", "Source", "Destination", "Protocol", "Len", "Info",};
+    const QFont font("", 12, QFont::Normal);
+    const QStringList title = {
+        "NO.", "Time", "Source", "Destination", "Protocol", "Len", "Info",
+    };
     ui->packetsTable->setColumnCount(title.length());
     ui->packetsTable->setFont(font);
     ui->packetsTable->setRowCount(0);
@@ -289,13 +290,15 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
 }
 
 void MainWindow::initInterfaceList() {
+    char error_buffer[PCAP_ERRBUF_SIZE];
+
     if (pcap_findalldevs(&allDevs, error_buffer) != 0) {
         ui->interfaceList->addItem(QString::fromStdString(error_buffer));
         return;
     }
 
     ui->interfaceList->addItem(QString::fromStdString("Choose interface"));
-    if (allDevs == NULL) {
+    if (allDevs == nullptr) {
         return;
     }
 

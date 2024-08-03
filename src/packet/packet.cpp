@@ -1,5 +1,5 @@
-#include "packet.h"
 #include <iostream>
+#include "packet.h"
 
 string Packet::get_link_src() const {
     return link_src;
@@ -81,12 +81,12 @@ ipv6_header* Packet::get_ipv6() const {
     return ipv6;
 }
 
-void Packet::set_ipv6(ipv6_header* const ipv6) {
+void Packet::set_ipv6(ipv6_header * const ipv6) {
     this->ipv6 = ipv6;
     this->ip_version = 6;
 }
 
-void Packet::set_ipv4(ipv4_header* const ipv4) {
+void Packet::set_ipv4(ipv4_header * const ipv4) {
     this->ipv4 = ipv4;
     this->ip_version = 4;
 }

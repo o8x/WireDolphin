@@ -1,6 +1,5 @@
-#include "interface.h"
-
 #include <iostream>
+#include "interface.h"
 
 void error(const char* fmt, ...) {
     va_list ap;
