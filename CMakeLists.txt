@@ -20,6 +20,7 @@ add_executable(wiredolphin
         include/dissectors/ipv4.h
         include/dissectors/ipv6.h
         include/dissectors/ethernet.h
+        include/logger.h
         src/packet/packetsource.cpp
         src/utils/utils.cpp
         src/packet/packet.cpp
@@ -28,6 +29,7 @@ add_executable(wiredolphin
         src/interface.cpp
         src/dissectors/ipv4.cpp
         src/dissectors/ipv6.cpp
+        src/logger/logger.cpp
 )
 
 find_package(Qt6 COMPONENTS Core Gui Widgets REQUIRED)
@@ -54,6 +56,8 @@ install(TARGETS wiredolphin
 add_executable(wiredolphin-cli
         src/interface.cpp
         include/interface.h
+        include/logger.h
+        src/logger/logger.cpp
         cli.cpp
 )
 

@@ -16,7 +16,7 @@ WireDolphin
 - [x] 三层协议详情树
 - [x] 四层协议解析（传输层，TCP/UDP）
 - [x] 四层协议详情树
-- [ ] 日志模块
+- [x] 日志模块
 - [ ] #include #define 自动化格式化工具
 - [ ] ARP、ICMP、HTTP、DNS、socks5解析
 - [ ] HTTPS client hello 识别
