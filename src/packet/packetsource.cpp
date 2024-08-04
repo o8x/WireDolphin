@@ -7,6 +7,7 @@
 #include "dissectors/ipv6.h"
 #include "packetsource.h"
 #include "utils.h"
+#include "dissectors/tcp.h"
 
 using namespace std;
 
@@ -50,11 +51,11 @@ void PacketSource::run() {
         }
 
         auto* p = new Packet;
+        p->set_len(int(pkt_header->len), int(pkt_header->caplen));
         if (parse_header(&pkt_data, p) == 0) {
             continue;
         }
 
-        p->set_len(pkt_header->len);
         p->set_time(format_timeval_to_string(pkt_header->ts));
         p->set_payload(pkt_data);
 
@@ -72,7 +73,6 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
     p->set_link_src(bytes_to_ascii(eth->link_src, 6, ":"));
     p->set_link_dst(bytes_to_ascii(eth->link_dst, 6, ":"));
 
-
     u_short type = ntohs(eth->type);
     switch (type) {
     case 0x0800: {
@@ -83,12 +83,12 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
         ipv4_header* ipv4 = new IPV4_HEADER;
         memcpy(ipv4, *pkt_data + sizeof(ethernet_header), sizeof(ipv4_header));
 
-        // IPv4 长度，即以太网载荷长度
         ipv4->total_length = ntohs(ipv4->total_length);
         ipv4->header_checksum = ntohs(ipv4->header_checksum);
         ipv4->identification = ntohs(ipv4->identification);
 
         p->set_ipv4(ipv4);
+        p->set_ip_header_len((ipv4->version_ihl & 0xfl) * 4);
         p->set_host_src(string(to_string(int(ipv4->source_address[0]))).
                         append(".").
                         append(to_string(int(ipv4->source_address[1]))).append(".").
@@ -116,9 +116,51 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
         case 4:
             p->set_type("IP in IP");
             break;
-        case 6:
+        case 6: {
             p->set_type("TCP");
+            tcp_header* tcp = new TCP_HEADER;
+            memcpy(tcp, *pkt_data + sizeof(ethernet_header) + p->get_ip_header_len(), sizeof(tcp_header));
+            tcp->src_port = ntohs(tcp->src_port);
+            tcp->dst_port = ntohs(tcp->dst_port);
+
+            auto* flags = new TCP_FLAGS;
+            parse_tcp_flags(flags, tcp->flags);
+            p->set_tcp_flags(flags);
+            p->set_tcp_header_len((tcp->data_offset >> 4) * 4);
+            p->set_port_src(tcp->src_port);
+            p->set_port_dst(tcp->dst_port);
+            p->set_tcp(tcp);
+
+            string info = p->get_info().append("Seq ").append(to_string(tcp->seq_number)).append(" ");
+            if (flags->URG) {
+                info = info.append("URG,");
+            }
+
+            if (flags->ACK) {
+                info = info.append("Ack ").append(to_string(tcp->ack_number)).append(" ");
+            }
+
+            if (flags->PSH) {
+                info = info.append("PSH ").
+                            append(to_string(p->get_len() - 14 - p->get_ip_header_len() - p->get_tcp_header_len())).
+                            append("byte ");
+            }
+
+            if (flags->RST) {
+                info = info.append("RST,");
+            }
+
+            if (flags->SYN) {
+                info = info.append("SYN,");
+            }
+
+            if (flags->FIN) {
+                info = info.append("FIN,");
+            }
+
+            p->set_info(info.substr(0, info.length() - 1));
             break;
+        }
         case 17:
             p->set_type("UDP");
             break;

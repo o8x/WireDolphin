@@ -151,8 +151,8 @@ void MainWindow::initWidgets() {
     ui->packetsTable->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
     ui->packetsTable->setColumnWidth(0, 50);
     ui->packetsTable->setColumnWidth(1, 120);
-    ui->packetsTable->setColumnWidth(2, 110);
-    ui->packetsTable->setColumnWidth(3, 110);
+    ui->packetsTable->setColumnWidth(2, 130);
+    ui->packetsTable->setColumnWidth(3, 130);
     ui->packetsTable->setColumnWidth(4, 60);
     ui->packetsTable->setColumnWidth(5, 60);
     ui->packetsTable->horizontalHeader()->setSectionResizeMode(6, QHeaderView::Stretch);
@@ -204,15 +204,44 @@ void MainWindow::updateCaptureStatusLabel() const {
 void MainWindow::acceptPacket(const int index) const {
     auto packet = packets[index];
 
+    string src = packet->get_host_src();
+    string dst = packet->get_host_dst();
+    if (auto* tcp = packet->get_tcp(); tcp != nullptr) {
+        src = src.append(":").append(to_string(tcp->src_port));
+        dst = dst.append(":").append(to_string(tcp->dst_port));
+    }
+
     ui->packetsTable->insertRow(index);
     ui->packetsTable->setRowHeight(index, 18);
-    ui->packetsTable->setItem(index, 0, new QTableWidgetItem(QString::number(index)));
-    ui->packetsTable->setItem(index, 1, new QTableWidgetItem(packet->get_time().substr(11).c_str()));
-    ui->packetsTable->setItem(index, 2, new QTableWidgetItem(packet->get_host_src().c_str()));
-    ui->packetsTable->setItem(index, 3, new QTableWidgetItem(packet->get_host_dst().c_str()));
-    ui->packetsTable->setItem(index, 4, new QTableWidgetItem(packet->get_type().c_str()));
-    ui->packetsTable->setItem(index, 5, new QTableWidgetItem(QString::number(packet->get_len())));
-    ui->packetsTable->setItem(index, 6, new QTableWidgetItem(packet->get_info().c_str()));
+
+    auto* item0 = new QTableWidgetItem(QString::number(index));
+    auto* item1 = new QTableWidgetItem(packet->get_time().substr(11).c_str());
+    auto* item2 = new QTableWidgetItem(src.c_str());
+    auto* item3 = new QTableWidgetItem(dst.c_str());
+    auto* item4 = new QTableWidgetItem(packet->get_type().c_str());
+    auto* item5 = new QTableWidgetItem(QString::number(packet->get_len()));
+    auto* item6 = new QTableWidgetItem(packet->get_info().c_str());
+
+    if (auto flags = packet->get_tcp_flags(); flags != nullptr) {
+        auto rgb = packet->get_color();
+        auto color = QColor(rgb[0], rgb[1], rgb[2]);
+
+        item0->setBackground(QBrush(color));
+        item1->setBackground(QBrush(color));
+        item2->setBackground(QBrush(color));
+        item3->setBackground(QBrush(color));
+        item4->setBackground(QBrush(color));
+        item5->setBackground(QBrush(color));
+        item6->setBackground(QBrush(color));
+    }
+
+    ui->packetsTable->setItem(index, 0, item0);
+    ui->packetsTable->setItem(index, 1, item1);
+    ui->packetsTable->setItem(index, 2, item2);
+    ui->packetsTable->setItem(index, 3, item3);
+    ui->packetsTable->setItem(index, 4, item4);
+    ui->packetsTable->setItem(index, 5, item5);
+    ui->packetsTable->setItem(index, 6, item6);
 
     updateCaptureStatusLabel();
 }
@@ -302,7 +331,7 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
             new QTreeWidgetItem(
                 QStringList(string("destination: ").append(packet->get_host_dst()).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("ihl: ").append(to_string(v4->version_ihl & 0xf)).c_str())),
+                QStringList(string("header length: ").append(to_string((v4->version_ihl & 0xf) * 4)).c_str())),
             new QTreeWidgetItem(
                 QStringList(string("service type: ").append(to_string(v4->type_of_service)).c_str())),
             new QTreeWidgetItem(
@@ -322,9 +351,41 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
     transportTree = new QTreeWidgetItem(ui->layerTree);
     transportTree->setText(0, "transport");
     transportTree->setExpanded(true);
-    transportTree->addChildren({
-        new QTreeWidgetItem(QStringList(string("[x] analysis not supported").c_str())),
-    });
+
+    if (auto tcp = packet->get_tcp(); tcp != nullptr) {
+        transportTree->addChildren({
+            new QTreeWidgetItem(QStringList(string("protocol: tcp").c_str())),
+            new QTreeWidgetItem(QStringList(string("source port: ").append(to_string(tcp->src_port)).c_str())),
+            new QTreeWidgetItem(QStringList(string("destination port: ").append(to_string(tcp->dst_port)).c_str())),
+            new QTreeWidgetItem(QStringList(string("seq number: ").append(to_string(tcp->seq_number)).c_str())),
+            new QTreeWidgetItem(QStringList(string("ack: ").append(to_string(tcp->ack_number)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("data offset: ").append(to_string(packet->get_tcp_header_len())).c_str())),
+            new QTreeWidgetItem(QStringList(string("window: ").append(to_string(tcp->window)).c_str())),
+            new QTreeWidgetItem(QStringList(string("checksum: ").append(to_string(tcp->checksum)).c_str())),
+            new QTreeWidgetItem(QStringList(string("urgent: ").append(to_string(tcp->urgent)).c_str())),
+            new QTreeWidgetItem(QStringList(string("flags:").c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - CWR: ").append(to_string(packet->get_tcp_flags()->CWR)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - ECE: ").append(to_string(packet->get_tcp_flags()->ECE)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - URG: ").append(to_string(packet->get_tcp_flags()->URG)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - ACK: ").append(to_string(packet->get_tcp_flags()->ACK)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - PSH: ").append(to_string(packet->get_tcp_flags()->PSH)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - RST: ").append(to_string(packet->get_tcp_flags()->RST)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - SYN: ").append(to_string(packet->get_tcp_flags()->SYN)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - FIN: ").append(to_string(packet->get_tcp_flags()->FIN)).c_str())),
+        });
+    } else {
+        // UDP
+    }
+
 
     applicationTree = new QTreeWidgetItem(ui->layerTree);
     applicationTree->setText(0, "application");

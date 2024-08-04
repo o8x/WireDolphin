@@ -30,6 +30,8 @@ add_executable(wiredolphin
         src/dissectors/ipv4.cpp
         src/dissectors/ipv6.cpp
         src/logger/logger.cpp
+        src/dissectors/tcp.cpp
+        include/dissectors/tcp.h
 )
 
 find_package(Qt6 COMPONENTS Core Gui Widgets REQUIRED)

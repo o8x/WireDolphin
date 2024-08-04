@@ -16,15 +16,15 @@ WireDolphin
 - [x] 三层协议详情树
 - [x] 四层协议解析（传输层，TCP/UDP）
 - [x] 四层协议详情树
+- [x] 识别 TCP Flag、Seq、NextSeq、Window 等
 - [x] 日志模块
 - [ ] #include #define 自动化格式化工具
 - [ ] ARP、ICMP、HTTP、DNS、socks5解析
 - [ ] HTTPS client hello 识别
-- [ ] 识别 TCP Flag、Seq、NextSeq、Window 等
 - [ ] 识别 TCP 分段丢失、乱序、重传
 - [ ] 识别 TCP、HTTP、更多协议的流
 - [ ] 网卡、会话、IP维度的统计能力
-- [ ] 表格根据协议内容按不同颜色展示
+- [x] 表格根据协议内容按不同颜色展示
 - [ ] 识别 VLAN
 - [ ] 支持导入 pcap 并进行分析
 - [ ] 支持数据包对指定网卡重放
