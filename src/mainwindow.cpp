@@ -1,6 +1,7 @@
 #include <iostream>
 #include <QMessageBox>
 #include <QMenu>
+#include <QFileDialog>
 
 #include "mainwindow.h"
 #include "interface.h"
@@ -49,6 +50,7 @@ MainWindow::~MainWindow() {
 
 void MainWindow::changeInterfaceIndex(int index) const {
     ui->startBtn->setDisabled(index == 0);
+    ui->loadFileBtn->setDisabled(index != 0);
 }
 
 void MainWindow::freePackets() {
@@ -255,6 +257,29 @@ void MainWindow::initSlots() {
     connect(packetHandler, &PacketSource::packet_pushed, this, &MainWindow::acceptPacket);
     connect(ui->packetsTable, &QTableWidget::clicked, this, &MainWindow::tableItemClicked);
     connect(ui->hexTable, &QTableWidget::customContextMenuRequested, this, &MainWindow::slotContextMenu);
+    connect(ui->loadFileBtn, &QPushButton::clicked, this, &MainWindow::loadOfflineFile);
+}
+
+void MainWindow::loadOfflineFile() const {
+    QString filename = QFileDialog::getOpenFileName(
+        ui->loadFileBtn, "Select a pcap file",
+        QDir::homePath(), "pcap file(*.pcap *.pcapng)"
+    );
+
+    if (filename.isEmpty()) {
+        return;
+    }
+
+    char ebuf[PCAP_ERRBUF_SIZE];
+    pcap_t* interface = open_offline_pcap(filename.toStdString().c_str(), 0, ebuf);
+    if (interface == nullptr) {
+        QMessageBox::warning(ui->loadFileBtn, "Warning", ebuf);
+        return;
+    }
+
+    packetHandler->set_filename(filename.toStdString());
+    packetHandler->init(nullptr, interface);
+    packetHandler->start();
 }
 
 void MainWindow::slotContextMenu(QPoint pos) {

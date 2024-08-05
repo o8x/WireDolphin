@@ -2,8 +2,13 @@
 #include "interface.h"
 #include "logger.h"
 
-pcap_t* open_live(const char* device, char* error_buffer) {
-    return pcap_open_live(device, 512 * 1024 * 1024, 1, 65535, error_buffer);
+pcap_t* open_offline_pcap(const char* name, int tstamp_precision, char* error_buffer) {
+    pcap_t* pc = pcap_open_offline_with_tstamp_precision(name, tstamp_precision, error_buffer);
+    if (pc == nullptr) {
+        logger::error("open %s, error %s", name, error_buffer);
+    }
+
+    return pc;
 }
 
 pcap_t* open_interface(const char* device, char* ebuf) {
@@ -71,7 +76,7 @@ pcap_t* open_interface(const char* device, char* ebuf) {
             logger::errorln("%s: Can't set time stamp type: %s", device, pcap_statustostr(status));
         } else if (status > 0) {
             logger::errorln("When trying to set timestamp type '%s' on %s: %s",
-                           pcap_tstamp_type_val_to_name(jflag), device, pcap_statustostr(status));
+                            pcap_tstamp_type_val_to_name(jflag), device, pcap_statustostr(status));
         }
     }
 

@@ -31,6 +31,7 @@ public:
     void resetCapture();
     void acceptPacket(int index) const;
     void initSlots();
+    void loadOfflineFile() const;
     void slotContextMenu(QPoint pos);
     void tableItemClicked(const QModelIndex& index);
     void toggleStartBtn();

@@ -3,6 +3,7 @@
 #include <pcap/pcap.h>
 using namespace std;
 
+pcap_t* open_offline_pcap(const char* name, int tstamp_precision, char* error_buffer);
 pcap_t* open_interface(const char* device, char* ebuf);
 string get_dlt_name(pcap_t*);
 string get_dlt_desc(pcap_t*);

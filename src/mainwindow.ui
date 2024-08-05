@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1608</width>
-    <height>965</height>
+    <width>1708</width>
+    <height>961</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -47,7 +47,7 @@
       <property name="minimumSize">
        <size>
         <width>0</width>
-        <height>32</height>
+        <height>0</height>
        </size>
       </property>
       <property name="maximumSize">
@@ -123,6 +123,13 @@
         <widget class="QPushButton" name="resetBtn">
          <property name="text">
           <string>Reset</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="loadFileBtn">
+         <property name="text">
+          <string>Load File</string>
          </property>
         </widget>
        </item>

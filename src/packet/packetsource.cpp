@@ -17,6 +17,14 @@ void PacketSource::init(pcap_if_t* device, pcap_t* interface) {
     this->running = true;
 }
 
+string PacketSource::get_filename() const {
+    return filename;
+}
+
+void PacketSource::set_filename(const string& filename) {
+    this->filename = filename;
+}
+
 pcap_t* PacketSource::get_interface() const {
     return interface;
 }
@@ -35,7 +43,7 @@ void PacketSource::free() {
 }
 
 void PacketSource::run() {
-    const string name = this->device->name;
+    const string name = this->device ? this->device->name : this->filename;
 
     emit listen_started(name, "on");
     while (true) {
