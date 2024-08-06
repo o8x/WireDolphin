@@ -34,6 +34,8 @@ add_executable(wiredolphin
         include/dissectors/tcp.h
         include/dissectors/arp.h
         src/dissectors/arp.cpp
+        src/dissectors/udp.cpp
+        include/dissectors/udp.h
 )
 
 find_package(Qt6 COMPONENTS Core Gui Widgets REQUIRED)

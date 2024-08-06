@@ -9,6 +9,7 @@
 #include "dissectors/ipv4.h"
 #include "dissectors/ipv6.h"
 #include "dissectors/tcp.h"
+#include "dissectors/udp.h"
 
 using namespace std;
 
@@ -25,6 +26,7 @@ class Packet {
     ipv6_header* ipv6 = nullptr;
     tcp_header* tcp = nullptr;
     arp_header* arp = nullptr;
+    udp_header* udp = nullptr;
     tcp_flags* flags = nullptr;
     int ip_version = 6;
     string time;
@@ -59,6 +61,8 @@ public:
     [[nodiscard]] int get_port_dst() const;
     [[nodiscard]] vector<int> get_color() const;
     [[nodiscard]] arp_header* get_arp() const;
+    [[nodiscard]] udp_header* get_udp() const;
+    void set_udp(udp_header* udp);
     void set_arp(arp_header* arp);
     void set_port_src(int port_src);
     void set_port_dst(int port_dst);

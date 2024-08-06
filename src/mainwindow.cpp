@@ -154,8 +154,8 @@ void MainWindow::initWidgets() {
     ui->packetsTable->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
     ui->packetsTable->setColumnWidth(0, 50);
     ui->packetsTable->setColumnWidth(1, 120);
-    ui->packetsTable->setColumnWidth(2, 130);
-    ui->packetsTable->setColumnWidth(3, 130);
+    ui->packetsTable->setColumnWidth(2, 140);
+    ui->packetsTable->setColumnWidth(3, 140);
     ui->packetsTable->setColumnWidth(4, 60);
     ui->packetsTable->setColumnWidth(5, 60);
     ui->packetsTable->horizontalHeader()->setSectionResizeMode(6, QHeaderView::Stretch);
@@ -209,9 +209,9 @@ void MainWindow::acceptPacket(const int index) const {
 
     string src = packet->get_host_src();
     string dst = packet->get_host_dst();
-    if (auto* tcp = packet->get_tcp(); tcp != nullptr) {
-        src = src.append(":").append(to_string(tcp->src_port));
-        dst = dst.append(":").append(to_string(tcp->dst_port));
+    if (packet->get_port_src() != 0) {
+        src = src.append(":").append(to_string(packet->get_port_src()));
+        dst = dst.append(":").append(to_string(packet->get_port_dst()));
     }
 
     ui->packetsTable->insertRow(index);

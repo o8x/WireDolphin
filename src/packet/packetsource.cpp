@@ -9,6 +9,7 @@
 #include "utils.h"
 #include "dissectors/arp.h"
 #include "dissectors/tcp.h"
+#include "dissectors/udp.h"
 
 using namespace std;
 
@@ -162,9 +163,19 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
             p->set_info(info.substr(0, info.length() - 1));
             break;
         }
-        case 17:
+        case 17: {
             p->set_type("UDP");
+            udp_header* udp = new UDP_HEADER;
+            memcpy(udp, *pkt_data + sizeof(ethernet_header) + p->get_ip_header_len(), sizeof(udp_header));
+            udp->src_port = ntohs(udp->src_port);
+            udp->dst_port = ntohs(udp->dst_port);
+
+            p->set_port_src(udp->src_port);
+            p->set_port_dst(udp->dst_port);
+            p->set_udp(udp);
+
             break;
+        }
         case 20:
             p->set_type("HMP");
             break;

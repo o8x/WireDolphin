@@ -150,6 +150,10 @@ vector<int> Packet::get_color() const {
         return {250, 240, 215};
     }
 
+    if (this->udp != nullptr) {
+        return {218, 238, 255};
+    }
+
     if (this->flags != nullptr) {
         /**
          * 三次握手
@@ -220,6 +224,14 @@ arp_header* Packet::get_arp() const {
     return arp;
 }
 
+udp_header* Packet::get_udp() const {
+    return udp;
+}
+
+void Packet::set_udp(udp_header* const udp) {
+    this->udp = udp;
+}
+
 void Packet::set_arp(arp_header* const arp) {
     this->arp = arp;
 }
@@ -238,4 +250,5 @@ Packet::~Packet() {
     delete tcp;
     delete flags;
     delete arp;
+    delete udp;
 }
