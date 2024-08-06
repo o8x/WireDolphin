@@ -328,50 +328,80 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
     networkTree = new QTreeWidgetItem(ui->layerTree);
     networkTree->setText(0, "network");
     networkTree->setExpanded(true);
-    if (packet->get_ip_version() == 6) {
-        ipv6_header* v6 = packet->get_ipv6();
+    if (packet->get_type_flag() == 0x0806) {
+        arp_header* arp = packet->get_arp();
         networkTree->addChildren({
             new QTreeWidgetItem(
-                QStringList(string("version: ipv6").c_str())),
+                QStringList(string("protocol: arp").c_str())),
             new QTreeWidgetItem(
-                QStringList(string("source: ").append(packet->get_host_src()).c_str())),
+                QStringList(string("hardware type").append(to_string(arp->hardware_type)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("destination: ").append(packet->get_host_dst()).c_str())),
-            new QTreeWidgetItem(QStringList(string("class: ").append("[x] analysis not supported").c_str())),
-            new QTreeWidgetItem(QStringList(string("flow label: ").append("[x] analysis not supported").c_str())),
+                QStringList(string("protocol type").append(to_string(arp->protocol_type)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("next header: ").append(to_string(v6->next_header)).c_str())),
+                QStringList(string("hardware length").append(to_string(arp->hardware_length)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("hop limit: ").append(to_string(v6->hop_limit)).c_str())),
+                QStringList(string("protocol length").append(to_string(arp->protocol_length)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("payload length: ").append(to_string(v6->payload_length)).c_str())),
-            new QTreeWidgetItem(QStringList(string("options: ").append("[x] analysis not supported").c_str())),
+                QStringList(string("op").append(to_string(arp->op)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("sender ethernet").append(bytes_to_mac(arp->sender_ethernet)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("sender host").append(bytes_to_ip(arp->sender_host)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("destination ethernet").append(bytes_to_mac(arp->destination_ethernet)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("destination host").append(bytes_to_ip(arp->destination_host)).c_str())),
         });
-    } else {
-        ipv4_header* v4 = packet->get_ipv4();
-        networkTree->addChildren({
-            new QTreeWidgetItem(
-                QStringList(string("version: ipv").append(to_string((v4->version_ihl & 0xf0) >> 4)).c_str())),
-            new QTreeWidgetItem(
-                QStringList(string("source: ").append(packet->get_host_src()).c_str())),
-            new QTreeWidgetItem(
-                QStringList(string("destination: ").append(packet->get_host_dst()).c_str())),
-            new QTreeWidgetItem(
-                QStringList(string("header length: ").append(to_string((v4->version_ihl & 0xf) * 4)).c_str())),
-            new QTreeWidgetItem(
-                QStringList(string("service type: ").append(to_string(v4->type_of_service)).c_str())),
-            new QTreeWidgetItem(
-                QStringList(string("identifier: ").append(to_string(v4->identification)).c_str())),
-            new QTreeWidgetItem(
-                QStringList(string("fragment_offset: ").append(to_string(v4->flags_fragment)).c_str())),
-            new QTreeWidgetItem(
-                QStringList(string("time to live: ").append(to_string(v4->time_to_live)).c_str())),
-            new QTreeWidgetItem(
-                QStringList(string("protocol: ").append(to_string(v4->protocol)).c_str())),
-            new QTreeWidgetItem(
-                QStringList(string("checksum: ").append(to_string(v4->header_checksum)).c_str())),
-            new QTreeWidgetItem(QStringList(string("options: ").append("[x] analysis not supported").c_str())),
-        });
+    } else if (packet->get_type_flag() == 0x0800) {
+        if (packet->get_ip_version() == 6) {
+            ipv6_header* v6 = packet->get_ipv6();
+            networkTree->addChildren({
+                new QTreeWidgetItem(
+                    QStringList(string("protocol: ip").c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("version: v6").c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("source: ").append(packet->get_host_src()).c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("destination: ").append(packet->get_host_dst()).c_str())),
+                new QTreeWidgetItem(QStringList(string("class: ").append("[x] analysis not supported").c_str())),
+                new QTreeWidgetItem(QStringList(string("flow label: ").append("[x] analysis not supported").c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("next header: ").append(to_string(v6->next_header)).c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("hop limit: ").append(to_string(v6->hop_limit)).c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("payload length: ").append(to_string(v6->payload_length)).c_str())),
+                new QTreeWidgetItem(QStringList(string("options: ").append("[x] analysis not supported").c_str())),
+            });
+        } else {
+            ipv4_header* v4 = packet->get_ipv4();
+            networkTree->addChildren({
+                new QTreeWidgetItem(
+                    QStringList(string("protocol: ip").c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("version: v").append(to_string((v4->version_ihl & 0xf0) >> 4)).c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("source: ").append(packet->get_host_src()).c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("destination: ").append(packet->get_host_dst()).c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("header length: ").append(to_string((v4->version_ihl & 0xf) * 4)).c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("service type: ").append(to_string(v4->type_of_service)).c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("identifier: ").append(to_string(v4->identification)).c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("fragment_offset: ").append(to_string(v4->flags_fragment)).c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("time to live: ").append(to_string(v4->time_to_live)).c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("protocol: ").append(to_string(v4->protocol)).c_str())),
+                new QTreeWidgetItem(
+                    QStringList(string("checksum: ").append(to_string(v4->header_checksum)).c_str())),
+                new QTreeWidgetItem(QStringList(string("options: ").append("[x] analysis not supported").c_str())),
+            });
+        }
     }
 
     transportTree = new QTreeWidgetItem(ui->layerTree);
@@ -408,10 +438,15 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
             new QTreeWidgetItem(
                 QStringList(string(" - FIN: ").append(to_string(packet->get_tcp_flags()->FIN)).c_str())),
         });
-    } else {
-        // UDP
+    } else if (auto udp = packet->get_udp(); udp != nullptr) {
+        transportTree->addChildren({
+            new QTreeWidgetItem(QStringList(string("protocol: udp").c_str())),
+            new QTreeWidgetItem(QStringList(string("source port: ").append(to_string(udp->src_port)).c_str())),
+            new QTreeWidgetItem(QStringList(string("destination port: ").append(to_string(udp->dst_port)).c_str())),
+            new QTreeWidgetItem(QStringList(string("total length: ").append(to_string(udp->total_length)).c_str())),
+            new QTreeWidgetItem(QStringList(string("checksum: ").append(to_string(udp->checksum)).c_str())),
+        });
     }
-
 
     applicationTree = new QTreeWidgetItem(ui->layerTree);
     applicationTree->setText(0, "application");
