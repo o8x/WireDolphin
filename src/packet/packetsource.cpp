@@ -7,6 +7,7 @@
 #include "dissectors/ipv6.h"
 #include "packetsource.h"
 #include "utils.h"
+#include "dissectors/arp.h"
 #include "dissectors/tcp.h"
 
 using namespace std;
@@ -97,16 +98,8 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
 
         p->set_ipv4(ipv4);
         p->set_ip_header_len((ipv4->version_ihl & 0xfl) * 4);
-        p->set_host_src(string(to_string(int(ipv4->source_address[0]))).
-                        append(".").
-                        append(to_string(int(ipv4->source_address[1]))).append(".").
-                        append(to_string(int(ipv4->source_address[2]))).append(".").
-                        append(to_string(int(ipv4->source_address[3]))));
-        p->set_host_dst(string(to_string(int(ipv4->dest_address[0]))).
-                        append(".").
-                        append(to_string(int(ipv4->dest_address[1]))).append(".").
-                        append(to_string(int(ipv4->dest_address[2]))).append(".").
-                        append(to_string(int(ipv4->dest_address[3]))));
+        p->set_host_src(bytes_to_ip(ipv4->source_address));
+        p->set_host_dst(bytes_to_ip(ipv4->dest_address));
 
         switch (ipv4->protocol) {
         case 0:
@@ -233,10 +226,53 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
 
         return 1;
     }
-    case 0x0806:
+    case 0x0806: {
         p->set_type("ARP");
         p->set_type_flag(0x0806);
+
+        arp_header* arp = new ARP_HEADER;
+        memcpy(arp, *pkt_data + sizeof(ethernet_header), sizeof(arp_header));
+
+        arp->protocol_type = ntohs(arp->protocol_type);
+        arp->hardware_type = ntohs(arp->hardware_type);
+        arp->op = ntohs(arp->op);
+        p->set_arp(arp);
+        p->set_host_src(bytes_to_ip(arp->sender_host));
+        p->set_host_dst(bytes_to_ip(arp->destination_host));
+
+        string info = p->get_info();
+        switch (arp->op) {
+        case 1:
+            info.append("Broadcast Ask ");
+            info.append(bytes_to_ip(arp->destination_host));
+            info.append(", from ");
+            info.append(bytes_to_ip(arp->sender_host));
+            info.append("(");
+            info.append(p->get_link_src());
+            info.append(")");
+            break;
+        case 2:
+            info.append("Answer ");
+            info.append(p->get_link_src());
+            info.append(", from ");
+            info.append(bytes_to_string(arp->sender_ethernet, 6, ":"));
+            info.append("(");
+            info.append(bytes_to_ip(arp->sender_host));
+            info.append(")");
+            break;
+        case 3:
+            p->set_type("RARP");
+            info = info.append("Reply");
+            break;
+        case 4:
+            p->set_type("RARP");
+            info = info.append("Reply");
+            break;
+        }
+
+        p->set_info(info);
         return 1;
+    }
     case 0x0808:
         p->set_type("IARP");
         p->set_type_flag(0x0808);

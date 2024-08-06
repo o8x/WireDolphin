@@ -32,6 +32,8 @@ add_executable(wiredolphin
         src/logger/logger.cpp
         src/dissectors/tcp.cpp
         include/dissectors/tcp.h
+        include/dissectors/arp.h
+        src/dissectors/arp.cpp
 )
 
 find_package(Qt6 COMPONENTS Core Gui Widgets REQUIRED)

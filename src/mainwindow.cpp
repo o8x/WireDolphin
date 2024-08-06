@@ -2,6 +2,7 @@
 #include <QMessageBox>
 #include <QMenu>
 #include <QFileDialog>
+#include <QScrollBar>
 
 #include "mainwindow.h"
 #include "interface.h"
@@ -224,18 +225,15 @@ void MainWindow::acceptPacket(const int index) const {
     auto* item5 = new QTableWidgetItem(QString::number(packet->get_len()));
     auto* item6 = new QTableWidgetItem(packet->get_info().c_str());
 
-    if (auto flags = packet->get_tcp_flags(); flags != nullptr) {
-        auto rgb = packet->get_color();
-        auto color = QColor(rgb[0], rgb[1], rgb[2]);
-
-        item0->setBackground(QBrush(color));
-        item1->setBackground(QBrush(color));
-        item2->setBackground(QBrush(color));
-        item3->setBackground(QBrush(color));
-        item4->setBackground(QBrush(color));
-        item5->setBackground(QBrush(color));
-        item6->setBackground(QBrush(color));
-    }
+    auto rgb = packet->get_color();
+    auto color = QColor(rgb[0], rgb[1], rgb[2]);
+    item0->setBackground(QBrush(color));
+    item1->setBackground(QBrush(color));
+    item2->setBackground(QBrush(color));
+    item3->setBackground(QBrush(color));
+    item4->setBackground(QBrush(color));
+    item5->setBackground(QBrush(color));
+    item6->setBackground(QBrush(color));
 
     ui->packetsTable->setItem(index, 0, item0);
     ui->packetsTable->setItem(index, 1, item1);
@@ -244,6 +242,9 @@ void MainWindow::acceptPacket(const int index) const {
     ui->packetsTable->setItem(index, 4, item4);
     ui->packetsTable->setItem(index, 5, item5);
     ui->packetsTable->setItem(index, 6, item6);
+
+    // 滚动到最底部，目前会导致表格卡顿和程序崩溃
+    // ui->packetsTable->verticalScrollBar()->setValue(ui->packetsTable->verticalScrollBar()->maximum());
 
     updateCaptureStatusLabel();
 }

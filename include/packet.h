@@ -4,6 +4,8 @@
 #include <string>
 #include <pcap.h>
 #include <vector>
+
+#include "dissectors/arp.h"
 #include "dissectors/ipv4.h"
 #include "dissectors/ipv6.h"
 #include "dissectors/tcp.h"
@@ -22,6 +24,7 @@ class Packet {
     ipv4_header* ipv4 = nullptr;
     ipv6_header* ipv6 = nullptr;
     tcp_header* tcp = nullptr;
+    arp_header* arp = nullptr;
     tcp_flags* flags = nullptr;
     int ip_version = 6;
     string time;
@@ -55,14 +58,16 @@ public:
     [[nodiscard]] int get_port_src() const;
     [[nodiscard]] int get_port_dst() const;
     [[nodiscard]] vector<int> get_color() const;
-    void set_port_src(const int port_src);
-    void set_port_dst(const int port_dst);
-    void set_ip_header_len(const int ip_header_len);
-    void set_tcp_header_len(const int tcp_header_len);
-    void set_tcp(tcp_header* const tcp);
-    void set_tcp_flags(tcp_flags* const flags);
-    void set_ipv6(ipv6_header* const ipv6);
-    void set_ipv4(ipv4_header* const ipv4);
+    [[nodiscard]] arp_header* get_arp() const;
+    void set_arp(arp_header* arp);
+    void set_port_src(int port_src);
+    void set_port_dst(int port_dst);
+    void set_ip_header_len(int ip_header_len);
+    void set_tcp_header_len(int tcp_header_len);
+    void set_tcp(tcp_header* tcp);
+    void set_tcp_flags(tcp_flags* flags);
+    void set_ipv6(ipv6_header* ipv6);
+    void set_ipv4(ipv4_header* ipv4);
     void set_link_src(const string& link_src);
     void set_link_dst(const string& link_dst);
     void set_host_src(const string& addr_src);
