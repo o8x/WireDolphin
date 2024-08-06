@@ -24,13 +24,15 @@ class MainWindow : public QMainWindow {
 public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
-    void changeInterfaceIndex(int index);
+    void changeInterfaceIndex(int index) const;
     void freePackets();
     void captureInterfaceStarted(string name, string message);
     void captureInterfaceStopped(string name, string message) const;
     void resetCapture();
     void acceptPacket(int index) const;
     void initSlots();
+    void loadOfflineFile() const;
+    void slotContextMenu(QPoint pos);
     void tableItemClicked(const QModelIndex& index);
     void toggleStartBtn();
     void initWidgets();
@@ -39,11 +41,10 @@ public:
 
 private:
     Ui::MainWindow* ui;
-    pcap_if_t* allDevs;
+    pcap_if_t* allDevs = nullptr;
     PacketSource* packetHandler;
     vector<Packet*> packets;
     bool captureStart = false;
-    char error_buffer[PCAP_ERRBUF_SIZE];
     QLabel* interfaceStatusLabel = new QLabel("", this);
     QLabel* captureStatusLabel = new QLabel("", this);
     chrono::time_point<chrono::steady_clock> time_start;
@@ -52,4 +53,5 @@ private:
     QTreeWidgetItem* networkTree = nullptr;
     QTreeWidgetItem* transportTree = nullptr;
     QTreeWidgetItem* applicationTree = nullptr;
+    QMenu* hexTableMenu = nullptr;
 };

@@ -1,13 +1,25 @@
 #include <iostream>
 #include <QMessageBox>
+#include <QMenu>
+#include <QFileDialog>
+#include <QScrollBar>
 
 #include "mainwindow.h"
-
 #include "interface.h"
 #include "packetsource.h"
 #include "ui_MainWindow.h"
+#include "utils.h"
 
 using namespace std;
+
+#ifdef __WINDOWS__
+#define HEX_TABLE_FONT "courier"
+#else
+#define HEX_TABLE_FONT "monospace"
+#endif
+
+#define HEX_TABLE_FONT_SIZE 9
+#define HEX_TABLE_SIDE_LENGTH 23
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
@@ -34,10 +46,12 @@ MainWindow::~MainWindow() {
     delete networkTree;
     delete transportTree;
     delete applicationTree;
+    delete hexTableMenu;
 }
 
-void MainWindow::changeInterfaceIndex(int index) {
+void MainWindow::changeInterfaceIndex(int index) const {
     ui->startBtn->setDisabled(index == 0);
+    ui->loadFileBtn->setDisabled(index != 0);
 }
 
 void MainWindow::freePackets() {
@@ -64,6 +78,8 @@ void MainWindow::captureInterfaceStarted(string name, string message) {
     ui->startBtn->setText("Stop");
     ui->packetsTable->clearContents();
     ui->packetsTable->setRowCount(0);
+    ui->hexTable->clearContents();
+    ui->hexTable->setRowCount(0);
 
     ui->layerTree->clear();
     interfaceStatusLabel->setText(name.append(": ").append(message).c_str());
@@ -129,21 +145,23 @@ void MainWindow::initWidgets() {
     ui->resetBtn->setDisabled(true);
     ui->bpfEditor->setPlaceholderText(" filter expression");
 
-    QFont font("", 12, QFont::Normal);
-    QStringList title = {"NO.", "Time", "Source", "Destination", "Protocol", "Len", "Info",};
+    const QStringList title = {
+        "NO.", "Time", "Source", "Destination", "Protocol", "Len", "Info",
+    };
     ui->packetsTable->setColumnCount(title.length());
-    ui->packetsTable->setFont(font);
+    ui->packetsTable->setFont(QFont("", 11, QFont::Normal));
     ui->packetsTable->setRowCount(0);
     ui->packetsTable->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
     ui->packetsTable->setColumnWidth(0, 50);
     ui->packetsTable->setColumnWidth(1, 120);
-    ui->packetsTable->setColumnWidth(2, 110);
-    ui->packetsTable->setColumnWidth(3, 110);
+    ui->packetsTable->setColumnWidth(2, 140);
+    ui->packetsTable->setColumnWidth(3, 140);
     ui->packetsTable->setColumnWidth(4, 60);
     ui->packetsTable->setColumnWidth(5, 60);
     ui->packetsTable->horizontalHeader()->setSectionResizeMode(6, QHeaderView::Stretch);
     ui->packetsTable->setHorizontalHeaderLabels(title);
     ui->packetsTable->setShowGrid(false);
+    // 系统自带的行号
     ui->packetsTable->verticalHeader()->setVisible(false);
     ui->packetsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->packetsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -151,6 +169,29 @@ void MainWindow::initWidgets() {
     // 树视图
     ui->layerTree->expandAll();
     ui->layerTree->setHeaderLabel("layers");
+
+    // hex 查看器
+    const int colCount = 17;
+    ui->hexTable->setRowCount(0);
+    ui->hexTable->setColumnCount(colCount);
+    ui->hexTable->setFont(QFont("", HEX_TABLE_FONT_SIZE, QFont::Normal));
+    ui->hexTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
+    ui->hexTable->horizontalHeader()->setHidden(true);
+    ui->hexTable->horizontalHeader()->setVisible(false);
+    ui->hexTable->setShowGrid(false);
+    ui->hexTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->hexTable->setStyleSheet("QTableWidget::item{padding:0px; border:0px;}");
+    for (int i = 0; i < colCount; i++) {
+        ui->hexTable->setColumnWidth(i, HEX_TABLE_SIDE_LENGTH);
+    }
+
+    // 开启自定义右键菜单
+    ui->hexTable->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    // TODO 回调函数
+    hexTableMenu = new QMenu(ui->hexTable);
+    hexTableMenu->addAction(new QAction("as HEX"));
+    hexTableMenu->addAction("as ASCII");
 }
 
 void MainWindow::updateCaptureStatusLabel() const {
@@ -166,15 +207,44 @@ void MainWindow::updateCaptureStatusLabel() const {
 void MainWindow::acceptPacket(const int index) const {
     auto packet = packets[index];
 
-    ui->packetsTable->insertRow(ui->packetsTable->rowCount());
-    // ui->packetsTable->setRowHeight(count, 18);
-    ui->packetsTable->setItem(index, 0, new QTableWidgetItem(QString::number(index)));
-    ui->packetsTable->setItem(index, 1, new QTableWidgetItem(packet->get_time().substr(11).c_str()));
-    ui->packetsTable->setItem(index, 2, new QTableWidgetItem(packet->get_host_src().c_str()));
-    ui->packetsTable->setItem(index, 3, new QTableWidgetItem(packet->get_host_dst().c_str()));
-    ui->packetsTable->setItem(index, 4, new QTableWidgetItem(packet->get_type().c_str()));
-    ui->packetsTable->setItem(index, 5, new QTableWidgetItem(QString::number(packet->get_len())));
-    ui->packetsTable->setItem(index, 6, new QTableWidgetItem(packet->get_info().c_str()));
+    string src = packet->get_host_src();
+    string dst = packet->get_host_dst();
+    if (packet->get_port_src() != 0) {
+        src = src.append(":").append(to_string(packet->get_port_src()));
+        dst = dst.append(":").append(to_string(packet->get_port_dst()));
+    }
+
+    ui->packetsTable->insertRow(index);
+    ui->packetsTable->setRowHeight(index, 18);
+
+    auto* item0 = new QTableWidgetItem(QString::number(index));
+    auto* item1 = new QTableWidgetItem(packet->get_time().substr(11).c_str());
+    auto* item2 = new QTableWidgetItem(src.c_str());
+    auto* item3 = new QTableWidgetItem(dst.c_str());
+    auto* item4 = new QTableWidgetItem(packet->get_type().c_str());
+    auto* item5 = new QTableWidgetItem(QString::number(packet->get_len()));
+    auto* item6 = new QTableWidgetItem(packet->get_info().c_str());
+
+    auto rgb = packet->get_color();
+    auto color = QColor(rgb[0], rgb[1], rgb[2]);
+    item0->setBackground(QBrush(color));
+    item1->setBackground(QBrush(color));
+    item2->setBackground(QBrush(color));
+    item3->setBackground(QBrush(color));
+    item4->setBackground(QBrush(color));
+    item5->setBackground(QBrush(color));
+    item6->setBackground(QBrush(color));
+
+    ui->packetsTable->setItem(index, 0, item0);
+    ui->packetsTable->setItem(index, 1, item1);
+    ui->packetsTable->setItem(index, 2, item2);
+    ui->packetsTable->setItem(index, 3, item3);
+    ui->packetsTable->setItem(index, 4, item4);
+    ui->packetsTable->setItem(index, 5, item5);
+    ui->packetsTable->setItem(index, 6, item6);
+
+    // 滚动到最底部，目前会导致表格卡顿和程序崩溃
+    // ui->packetsTable->verticalScrollBar()->setValue(ui->packetsTable->verticalScrollBar()->maximum());
 
     updateCaptureStatusLabel();
 }
@@ -187,6 +257,37 @@ void MainWindow::initSlots() {
     connect(packetHandler, &PacketSource::listen_stopped, this, &MainWindow::captureInterfaceStopped);
     connect(packetHandler, &PacketSource::packet_pushed, this, &MainWindow::acceptPacket);
     connect(ui->packetsTable, &QTableWidget::clicked, this, &MainWindow::tableItemClicked);
+    connect(ui->hexTable, &QTableWidget::customContextMenuRequested, this, &MainWindow::slotContextMenu);
+    connect(ui->loadFileBtn, &QPushButton::clicked, this, &MainWindow::loadOfflineFile);
+}
+
+void MainWindow::loadOfflineFile() const {
+    QString filename = QFileDialog::getOpenFileName(
+        ui->loadFileBtn, "Select a pcap file",
+        QDir::homePath(), "pcap file(*.pcap *.pcapng)"
+    );
+
+    if (filename.isEmpty()) {
+        return;
+    }
+
+    char ebuf[PCAP_ERRBUF_SIZE];
+    pcap_t* interface = open_offline_pcap(filename.toStdString().c_str(), 0, ebuf);
+    if (interface == nullptr) {
+        QMessageBox::warning(ui->loadFileBtn, "Warning", ebuf);
+        return;
+    }
+
+    packetHandler->set_filename(filename.toStdString());
+    packetHandler->init(nullptr, interface);
+    packetHandler->start();
+}
+
+void MainWindow::slotContextMenu(QPoint pos) {
+    auto index = ui->hexTable->indexAt(pos);
+    if (index.isValid()) {
+        hexTableMenu->exec(QCursor::pos());
+    }
 }
 
 void MainWindow::tableItemClicked(const QModelIndex& index) {
@@ -256,7 +357,7 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
             new QTreeWidgetItem(
                 QStringList(string("destination: ").append(packet->get_host_dst()).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("ihl: ").append(to_string(v4->version_ihl & 0xf)).c_str())),
+                QStringList(string("header length: ").append(to_string((v4->version_ihl & 0xf) * 4)).c_str())),
             new QTreeWidgetItem(
                 QStringList(string("service type: ").append(to_string(v4->type_of_service)).c_str())),
             new QTreeWidgetItem(
@@ -276,9 +377,41 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
     transportTree = new QTreeWidgetItem(ui->layerTree);
     transportTree->setText(0, "transport");
     transportTree->setExpanded(true);
-    transportTree->addChildren({
-        new QTreeWidgetItem(QStringList(string("[x] analysis not supported").c_str())),
-    });
+
+    if (auto tcp = packet->get_tcp(); tcp != nullptr) {
+        transportTree->addChildren({
+            new QTreeWidgetItem(QStringList(string("protocol: tcp").c_str())),
+            new QTreeWidgetItem(QStringList(string("source port: ").append(to_string(tcp->src_port)).c_str())),
+            new QTreeWidgetItem(QStringList(string("destination port: ").append(to_string(tcp->dst_port)).c_str())),
+            new QTreeWidgetItem(QStringList(string("seq number: ").append(to_string(tcp->seq_number)).c_str())),
+            new QTreeWidgetItem(QStringList(string("ack: ").append(to_string(tcp->ack_number)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string("data offset: ").append(to_string(packet->get_tcp_header_len())).c_str())),
+            new QTreeWidgetItem(QStringList(string("window: ").append(to_string(tcp->window)).c_str())),
+            new QTreeWidgetItem(QStringList(string("checksum: ").append(to_string(tcp->checksum)).c_str())),
+            new QTreeWidgetItem(QStringList(string("urgent: ").append(to_string(tcp->urgent)).c_str())),
+            new QTreeWidgetItem(QStringList(string("flags:").c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - CWR: ").append(to_string(packet->get_tcp_flags()->CWR)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - ECE: ").append(to_string(packet->get_tcp_flags()->ECE)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - URG: ").append(to_string(packet->get_tcp_flags()->URG)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - ACK: ").append(to_string(packet->get_tcp_flags()->ACK)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - PSH: ").append(to_string(packet->get_tcp_flags()->PSH)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - RST: ").append(to_string(packet->get_tcp_flags()->RST)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - SYN: ").append(to_string(packet->get_tcp_flags()->SYN)).c_str())),
+            new QTreeWidgetItem(
+                QStringList(string(" - FIN: ").append(to_string(packet->get_tcp_flags()->FIN)).c_str())),
+        });
+    } else {
+        // UDP
+    }
+
 
     applicationTree = new QTreeWidgetItem(ui->layerTree);
     applicationTree->setText(0, "application");
@@ -286,16 +419,42 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
     applicationTree->addChildren({
         new QTreeWidgetItem(QStringList(string("[x] analysis not supported").c_str())),
     });
+
+    // hex 查看器
+    ui->hexTable->clearContents();
+    ui->hexTable->setRowCount(0);
+
+    const u_char* payload = packet->get_payload();
+    int row = 0;
+    do {
+        ui->hexTable->insertRow(row);
+        ui->hexTable->setRowHeight(row, HEX_TABLE_SIDE_LENGTH);
+
+        // 填充格子
+        for (int j = 0; j < 16; j++) {
+            int ind = (row * 16) + j;
+            if (ind >= packet->get_len()) {
+                break;
+            }
+
+            // TODO 可能是错的，和 Tree 中的 mac 有可能对不上
+            ui->hexTable->setItem(row, j, new QTableWidgetItem(byte_to_ascii(payload[ind]).c_str()));
+        }
+
+        row++;
+    } while (row * 16 < packet->get_len());
 }
 
 void MainWindow::initInterfaceList() {
+    char error_buffer[PCAP_ERRBUF_SIZE];
+
     if (pcap_findalldevs(&allDevs, error_buffer) != 0) {
         ui->interfaceList->addItem(QString::fromStdString(error_buffer));
         return;
     }
 
     ui->interfaceList->addItem(QString::fromStdString("Choose interface"));
-    if (allDevs == NULL) {
+    if (allDevs == nullptr) {
         return;
     }
 

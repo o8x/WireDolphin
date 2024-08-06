@@ -2,7 +2,6 @@
 
 #include <QThread>
 #include <pcap.h>
-
 #include "packet.h"
 
 class PacketSource final : public QThread {
@@ -11,6 +10,7 @@ class PacketSource final : public QThread {
     vector<Packet*>* packetsPtr;
     pcap_t* interface = nullptr;
     pcap_if_t* device = nullptr;
+    string filename;
     bool running = false;
     void run() override;
     static int parse_header(const u_char**, Packet*& p);
@@ -27,6 +27,8 @@ public:
     }
 
     void init(pcap_if_t* device, pcap_t* interface);
+    [[nodiscard]] string get_filename() const;
+    void set_filename(const string& filename);
     [[nodiscard]] pcap_t* get_interface() const;
     void free();
 };

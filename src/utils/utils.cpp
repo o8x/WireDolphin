@@ -41,8 +41,16 @@ string bytes_to_string(const u_char* byte, int size, const string& spliter) {
     return oss.str();
 }
 
-string byte_to_ascii(const u_char byte) {
+[[nodiscard]] string byte_to_ascii(const u_char byte) {
     std::ostringstream oss;
-    oss << std::hex << ntohs(byte << 8);
+    oss << std::uppercase << std::hex << ntohs(byte << 8);
     return oss.str();
+}
+
+string bytes_to_ip(const u_char host[4]) {
+    return string(to_string(int(host[0]))).
+           append(".").
+           append(to_string(int(host[1]))).append(".").
+           append(to_string(int(host[2]))).append(".").
+           append(to_string(int(host[3])));
 }

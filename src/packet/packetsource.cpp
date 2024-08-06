@@ -1,18 +1,30 @@
-#include "packetsource.h"
-
 #include <iostream>
 #include <QDebug>
 #include <QtCore/qcoreapplication.h>
-
 #include "interface.h"
-#include "protocol.h"
+#include "dissectors/ethernet.h"
+#include "dissectors/ipv4.h"
+#include "dissectors/ipv6.h"
+#include "packetsource.h"
 #include "utils.h"
+#include "dissectors/arp.h"
+#include "dissectors/tcp.h"
+#include "dissectors/udp.h"
+
 using namespace std;
 
 void PacketSource::init(pcap_if_t* device, pcap_t* interface) {
     this->device = device;
     this->interface = interface;
     this->running = true;
+}
+
+string PacketSource::get_filename() const {
+    return filename;
+}
+
+void PacketSource::set_filename(const string& filename) {
+    this->filename = filename;
 }
 
 pcap_t* PacketSource::get_interface() const {
@@ -33,7 +45,7 @@ void PacketSource::free() {
 }
 
 void PacketSource::run() {
-    const string name = this->device->name;
+    const string name = this->device ? this->device->name : this->filename;
 
     emit listen_started(name, "on");
     while (true) {
@@ -49,11 +61,11 @@ void PacketSource::run() {
         }
 
         auto* p = new Packet;
+        p->set_len(int(pkt_header->len), int(pkt_header->caplen));
         if (parse_header(&pkt_data, p) == 0) {
             continue;
         }
 
-        p->set_len(pkt_header->len);
         p->set_time(format_timeval_to_string(pkt_header->ts));
         p->set_payload(pkt_data);
 
@@ -71,7 +83,6 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
     p->set_link_src(bytes_to_ascii(eth->link_src, 6, ":"));
     p->set_link_dst(bytes_to_ascii(eth->link_dst, 6, ":"));
 
-
     u_short type = ntohs(eth->type);
     switch (type) {
     case 0x0800: {
@@ -82,22 +93,14 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
         ipv4_header* ipv4 = new IPV4_HEADER;
         memcpy(ipv4, *pkt_data + sizeof(ethernet_header), sizeof(ipv4_header));
 
-        // IPv4 长度，即以太网载荷长度
         ipv4->total_length = ntohs(ipv4->total_length);
         ipv4->header_checksum = ntohs(ipv4->header_checksum);
         ipv4->identification = ntohs(ipv4->identification);
 
         p->set_ipv4(ipv4);
-        p->set_host_src(string(to_string(int(ipv4->source_address[0]))).
-                        append(".").
-                        append(to_string(int(ipv4->source_address[1]))).append(".").
-                        append(to_string(int(ipv4->source_address[2]))).append(".").
-                        append(to_string(int(ipv4->source_address[3]))));
-        p->set_host_dst(string(to_string(int(ipv4->dest_address[0]))).
-                        append(".").
-                        append(to_string(int(ipv4->dest_address[1]))).append(".").
-                        append(to_string(int(ipv4->dest_address[2]))).append(".").
-                        append(to_string(int(ipv4->dest_address[3]))));
+        p->set_ip_header_len((ipv4->version_ihl & 0xfl) * 4);
+        p->set_host_src(bytes_to_ip(ipv4->source_address));
+        p->set_host_dst(bytes_to_ip(ipv4->dest_address));
 
         switch (ipv4->protocol) {
         case 0:
@@ -115,12 +118,64 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
         case 4:
             p->set_type("IP in IP");
             break;
-        case 6:
+        case 6: {
             p->set_type("TCP");
+            tcp_header* tcp = new TCP_HEADER;
+            memcpy(tcp, *pkt_data + sizeof(ethernet_header) + p->get_ip_header_len(), sizeof(tcp_header));
+            tcp->src_port = ntohs(tcp->src_port);
+            tcp->dst_port = ntohs(tcp->dst_port);
+
+            auto* flags = new TCP_FLAGS;
+            parse_tcp_flags(flags, tcp->flags);
+            p->set_tcp_flags(flags);
+            p->set_tcp_header_len((tcp->data_offset >> 4) * 4);
+            p->set_port_src(tcp->src_port);
+            p->set_port_dst(tcp->dst_port);
+            p->set_tcp(tcp);
+
+            string info = p->get_info().append("Seq ").append(to_string(tcp->seq_number)).append(" ");
+            if (flags->URG) {
+                info = info.append("URG,");
+            }
+
+            if (flags->ACK) {
+                info = info.append("Ack ").append(to_string(tcp->ack_number)).append(" ");
+            }
+
+            if (flags->PSH) {
+                info = info.append("PSH ").
+                            append(to_string(p->get_len() - 14 - p->get_ip_header_len() - p->get_tcp_header_len())).
+                            append("byte ");
+            }
+
+            if (flags->RST) {
+                info = info.append("RST,");
+            }
+
+            if (flags->SYN) {
+                info = info.append("SYN,");
+            }
+
+            if (flags->FIN) {
+                info = info.append("FIN,");
+            }
+
+            p->set_info(info.substr(0, info.length() - 1));
             break;
-        case 17:
+        }
+        case 17: {
             p->set_type("UDP");
+            udp_header* udp = new UDP_HEADER;
+            memcpy(udp, *pkt_data + sizeof(ethernet_header) + p->get_ip_header_len(), sizeof(udp_header));
+            udp->src_port = ntohs(udp->src_port);
+            udp->dst_port = ntohs(udp->dst_port);
+
+            p->set_port_src(udp->src_port);
+            p->set_port_dst(udp->dst_port);
+            p->set_udp(udp);
+
             break;
+        }
         case 20:
             p->set_type("HMP");
             break;
@@ -182,10 +237,53 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
 
         return 1;
     }
-    case 0x0806:
+    case 0x0806: {
         p->set_type("ARP");
         p->set_type_flag(0x0806);
+
+        arp_header* arp = new ARP_HEADER;
+        memcpy(arp, *pkt_data + sizeof(ethernet_header), sizeof(arp_header));
+
+        arp->protocol_type = ntohs(arp->protocol_type);
+        arp->hardware_type = ntohs(arp->hardware_type);
+        arp->op = ntohs(arp->op);
+        p->set_arp(arp);
+        p->set_host_src(bytes_to_ip(arp->sender_host));
+        p->set_host_dst(bytes_to_ip(arp->destination_host));
+
+        string info = p->get_info();
+        switch (arp->op) {
+        case 1:
+            info.append("Broadcast Ask ");
+            info.append(bytes_to_ip(arp->destination_host));
+            info.append(", from ");
+            info.append(bytes_to_ip(arp->sender_host));
+            info.append("(");
+            info.append(p->get_link_src());
+            info.append(")");
+            break;
+        case 2:
+            info.append("Answer ");
+            info.append(p->get_link_src());
+            info.append(", from ");
+            info.append(bytes_to_string(arp->sender_ethernet, 6, ":"));
+            info.append("(");
+            info.append(bytes_to_ip(arp->sender_host));
+            info.append(")");
+            break;
+        case 3:
+            p->set_type("RARP");
+            info = info.append("Reply");
+            break;
+        case 4:
+            p->set_type("RARP");
+            info = info.append("Reply");
+            break;
+        }
+
+        p->set_info(info);
         return 1;
+    }
     case 0x0808:
         p->set_type("IARP");
         p->set_type_flag(0x0808);
