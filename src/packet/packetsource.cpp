@@ -122,42 +122,59 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
             p->set_type("TCP");
             tcp_header* tcp = new TCP_HEADER;
             memcpy(tcp, *pkt_data + sizeof(ethernet_header) + p->get_ip_header_len(), sizeof(tcp_header));
+            auto* flags = new TCP_FLAGS;
+            parse_tcp_flags(flags, tcp->flags);
             tcp->src_port = ntohs(tcp->src_port);
             tcp->dst_port = ntohs(tcp->dst_port);
 
-            auto* flags = new TCP_FLAGS;
-            parse_tcp_flags(flags, tcp->flags);
-            p->set_tcp_flags(flags);
             p->set_tcp_header_len((tcp->data_offset >> 4) * 4);
             p->set_port_src(tcp->src_port);
             p->set_port_dst(tcp->dst_port);
+            p->set_tcp_flags(flags);
             p->set_tcp(tcp);
 
-            string info = p->get_info().append("Seq ").append(to_string(tcp->seq_number)).append(" ");
+            string info = p->get_info();
+
+            int layer4_offset = 14 + p->get_ip_header_len() + p->get_tcp_header_len();
+            std::istringstream stream(reinterpret_cast<const char*>(*pkt_data + layer4_offset));
+            if (string method = is_restful_request(stream); !method.empty()) {
+                stream.seekg(0, std::ios::beg);
+                std::string line;
+                if (std::getline(stream, line)) {
+                    // 去掉 \r
+                    info.append(line);
+                }
+
+                p->set_type("HTTP");
+                p->set_info(info);
+                break;
+            }
+
+            info.append("Seq ").append(to_string(tcp->seq_number)).append(" ");
             if (flags->URG) {
-                info = info.append("URG,");
+                info.append("URG,");
             }
 
             if (flags->ACK) {
-                info = info.append("Ack ").append(to_string(tcp->ack_number)).append(" ");
+                info.append("Ack ").append(to_string(tcp->ack_number)).append(" ");
             }
 
             if (flags->PSH) {
-                info = info.append("PSH ").
-                            append(to_string(p->get_len() - 14 - p->get_ip_header_len() - p->get_tcp_header_len())).
-                            append("byte ");
+                info.append("PSH ").
+                     append(to_string(p->get_len() - 14 - p->get_ip_header_len() - p->get_tcp_header_len())).
+                     append("byte ");
             }
 
             if (flags->RST) {
-                info = info.append("RST,");
+                info.append("RST,");
             }
 
             if (flags->SYN) {
-                info = info.append("SYN,");
+                info.append("SYN,");
             }
 
             if (flags->FIN) {
-                info = info.append("FIN,");
+                info.append("FIN,");
             }
 
             p->set_info(info.substr(0, info.length() - 1));

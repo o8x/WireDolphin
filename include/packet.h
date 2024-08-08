@@ -20,6 +20,7 @@ class Packet {
     int port_dst = 0;
     int ip_header_len = 0;
     int tcp_header_len = 0;
+    int ip_version = 0;
     u_short type_flag{};
     const u_char* payload = nullptr;
     ipv4_header* ipv4 = nullptr;
@@ -28,7 +29,6 @@ class Packet {
     arp_header* arp = nullptr;
     udp_header* udp = nullptr;
     tcp_flags* flags = nullptr;
-    int ip_version = 6;
     string time;
     string link_src;
     string link_dst;

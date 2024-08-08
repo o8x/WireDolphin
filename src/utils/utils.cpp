@@ -47,10 +47,64 @@ string bytes_to_string(const u_char* byte, int size, const string& spliter) {
     return oss.str();
 }
 
+string bytes_to_mac(const u_char addr[6]) {
+    return bytes_to_ascii(addr, 6, ":");
+}
+
 string bytes_to_ip(const u_char host[4]) {
     return string(to_string(int(host[0]))).
            append(".").
            append(to_string(int(host[1]))).append(".").
            append(to_string(int(host[2]))).append(".").
            append(to_string(int(host[3])));
+}
+
+string is_restful_request(std::istringstream& stream) {
+    char head[5];
+    stream.read(head, 4);
+    head[4] = '\0'; // 字符串比较必须以 \0 结束，需要 strcpy 或者手动添加 \0
+
+    if (strcmp(head, "GET ") == 0) {
+        return "GET";
+    }
+
+    if (strcmp(head, "POST") == 0) {
+        return "POST";
+    }
+
+    if (strcmp(head, "PUT ") == 0) {
+        return "PUT";
+    }
+
+    if (strcmp(head, "HEAD") == 0) {
+        return "HEAD";
+    }
+
+    // 移动到数据头，重新读取
+    stream.seekg(0, std::ios::beg);
+    char method[7];
+    stream.read(method, 6);
+    method[6] = '\0';
+
+    if (strcmp(method, "DELETE") == 0) {
+        return "DELETE";
+    }
+
+    if (strcmp(method, "OPTION") == 0) {
+        return "OPTION";
+    }
+
+    if (strcmp(method, "TRACE ") == 0) {
+        return "TRACE";
+    }
+
+    if (strcmp(method, "PATCH ") == 0) {
+        return "PATCH";
+    }
+
+    if (strcmp(method, "CONNEC") == 0) {
+        return "CONNECT";
+    }
+
+    return "";
 }
