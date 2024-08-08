@@ -154,6 +154,10 @@ vector<int> Packet::get_color() const {
         return {218, 238, 255};
     }
 
+    if (this->type == "HTTP") {
+        return {0, 250, 154};
+    }
+
     if (this->flags != nullptr) {
         /**
          * 三次握手
