@@ -13,13 +13,13 @@
 using namespace std;
 
 #ifdef __WINDOWS__
-#define HEX_TABLE_FONT "courier"
+#define HEX_TABLE_FONT_FAMILY "Consolas"
 #else
-#define HEX_TABLE_FONT "monospace"
+#define HEX_TABLE_FONT_FAMILY "Monaco"
 #endif
 
-#define HEX_TABLE_FONT_SIZE 9
-#define HEX_TABLE_SIDE_LENGTH 23
+#define HEX_TABLE_FONT_SIZE 11
+#define HEX_TABLE_SIDE_LENGTH 18
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
@@ -174,13 +174,14 @@ void MainWindow::initWidgets() {
     const int colCount = 17;
     ui->hexTable->setRowCount(0);
     ui->hexTable->setColumnCount(colCount);
-    ui->hexTable->setFont(QFont("", HEX_TABLE_FONT_SIZE, QFont::Normal));
+    ui->hexTable->setFont(QFont(HEX_TABLE_FONT_FAMILY, HEX_TABLE_FONT_SIZE, QFont::Normal));
     ui->hexTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
     ui->hexTable->horizontalHeader()->setHidden(true);
     ui->hexTable->horizontalHeader()->setVisible(false);
     ui->hexTable->setShowGrid(false);
     ui->hexTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->hexTable->setStyleSheet("QTableWidget::item{padding:0px; border:0px;}");
+    ui->hexTable->setTextElideMode(Qt::ElideNone);
     for (int i = 0; i < colCount; i++) {
         ui->hexTable->setColumnWidth(i, HEX_TABLE_SIDE_LENGTH);
     }
@@ -459,25 +460,29 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
     ui->hexTable->clearContents();
     ui->hexTable->setRowCount(0);
 
-    const u_char* payload = packet->get_payload();
+    const int line_count = ceil(static_cast<float>(packet->get_len()) / static_cast<float>(16));
+    for (int i = 0; i < line_count; i++) {
+        ui->hexTable->insertRow(i);
+        ui->hexTable->setRowHeight(i, HEX_TABLE_SIDE_LENGTH);
+    }
+
     int row = 0;
-    do {
-        ui->hexTable->insertRow(row);
-        ui->hexTable->setRowHeight(row, HEX_TABLE_SIDE_LENGTH);
-
-        // 填充格子
-        for (int j = 0; j < 16; j++) {
-            int ind = (row * 16) + j;
-            if (ind >= packet->get_len()) {
-                break;
-            }
-
-            // TODO 可能是错的，和 Tree 中的 mac 有可能对不上
-            ui->hexTable->setItem(row, j, new QTableWidgetItem(byte_to_ascii(payload[ind]).c_str()));
+    const u_char* payload = packet->get_payload();
+    for (int i = 0; i < packet->get_len(); i++) {
+        if (i > 0 && i % 16 == 0) {
+            row++;
         }
 
-        row++;
-    } while (row * 16 < packet->get_len());
+        // 第8个保留空白
+        if (i % 8 == 0 && i % 16 != 0) {
+            ui->hexTable->setItem(row, 8, new QTableWidgetItem(""));
+        }
+
+        // 当求余16大于8时说明数字介于 8 - 16之间
+        // 需要向右移动一个格子，避免占用刚才的空格
+        int index = i % 16 < 8 ? i % 16 : (i % 16) + 1;
+        ui->hexTable->setItem(row, index, new QTableWidgetItem(byte_to_ascii(payload[i]).c_str()));
+    }
 }
 
 void MainWindow::initInterfaceList() {

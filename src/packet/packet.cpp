@@ -116,8 +116,8 @@ void Packet::set_info(const string& info) {
     this->info = info;
 }
 
-void Packet::set_payload(const u_char* payload) {
-    this->payload = payload;
+void Packet::set_payload(const u_char** pkt_data) {
+    memcpy(&this->payload, *pkt_data, this->get_len());
 }
 
 int Packet::get_ip_header_len() const {

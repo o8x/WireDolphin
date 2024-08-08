@@ -67,7 +67,7 @@ void PacketSource::run() {
         }
 
         p->set_time(format_timeval_to_string(pkt_header->ts));
-        p->set_payload(pkt_data);
+        p->set_payload(&pkt_data);
 
         packetsPtr->push_back(p);
         // 如果并发，会有线程安全问题，size 不准
