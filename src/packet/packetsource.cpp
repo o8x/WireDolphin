@@ -283,7 +283,7 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
             info.append("Answer ");
             info.append(p->get_link_src());
             info.append(", from ");
-            info.append(bytes_to_string(arp->sender_ethernet, 6, ":"));
+            info.append(bytes_to_ascii(arp->sender_ethernet, 6, ":"));
             info.append("(");
             info.append(bytes_to_ip(arp->sender_host));
             info.append(")");
