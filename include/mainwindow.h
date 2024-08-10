@@ -3,7 +3,9 @@
 #include <QTreeWidgetItem>
 #include <QMainWindow>
 #include <QLabel>
+#include <QCloseEvent>
 #include <QStandardItemModel>
+#include <QSystemTrayIcon>
 
 #include "packetsource.h"
 
@@ -21,7 +23,11 @@ QT_END_NAMESPACE
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
+protected:
+    void closeEvent(QCloseEvent* event) override;
+
 public:
+    void initWindow();
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
     void changeInterfaceIndex(int index) const;
@@ -54,4 +60,5 @@ private:
     QTreeWidgetItem* transportTree = nullptr;
     QTreeWidgetItem* applicationTree = nullptr;
     QMenu* hexTableMenu = nullptr;
+    QSystemTrayIcon* systemTrayIcon = nullptr;
 };

@@ -5,6 +5,7 @@
 #include <QScrollBar>
 
 #include "mainwindow.h"
+#include <QSystemTrayIcon>
 #include "interface.h"
 #include "packetsource.h"
 #include "ui_MainWindow.h"
@@ -21,12 +22,42 @@ using namespace std;
 #define HEX_TABLE_FONT_SIZE 11
 #define HEX_TABLE_SIDE_LENGTH 18
 
+void MainWindow::closeEvent(QCloseEvent* event) {
+    event->ignore();
+
+    hide();
+}
+
+void MainWindow::initWindow() {
+    QIcon icon;
+    icon.addPixmap(QWidget().style()->standardIcon(QStyle::SP_DriveNetIcon).pixmap(QSize(16, 16)));
+
+    systemTrayIcon->setIcon(icon);
+    systemTrayIcon->setToolTip("WireDolphin");
+    systemTrayIcon->show();
+
+    QMenu menu;
+    QAction* quit = new QAction("Exit");
+    menu.addAction(quit);
+    systemTrayIcon->setContextMenu(&menu);
+
+    connect(quit, &QAction::triggered, this, [this]() {
+        exit(0);
+    });
+
+    connect(systemTrayIcon, &QSystemTrayIcon::activated, this, [this]() {
+        show();
+    });
+}
+
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
 
     packets = vector<Packet*>();
     packetHandler = new PacketSource(this, &packets);
+    systemTrayIcon = new QSystemTrayIcon();
 
+    initWindow();
     initWidgets();
     initInterfaceList();
     initSlots();
@@ -47,6 +78,7 @@ MainWindow::~MainWindow() {
     delete transportTree;
     delete applicationTree;
     delete hexTableMenu;
+    delete systemTrayIcon;
 }
 
 void MainWindow::changeInterfaceIndex(int index) const {
