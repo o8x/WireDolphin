@@ -67,7 +67,7 @@ void PacketSource::run() {
         }
 
         p->set_time(format_timeval_to_string(pkt_header->ts));
-        p->set_payload(pkt_data);
+        p->set_payload(&pkt_data);
 
         packetsPtr->push_back(p);
         // 如果并发，会有线程安全问题，size 不准
@@ -283,7 +283,7 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
             info.append("Answer ");
             info.append(p->get_link_src());
             info.append(", from ");
-            info.append(bytes_to_string(arp->sender_ethernet, 6, ":"));
+            info.append(bytes_to_ascii(arp->sender_ethernet, 6, ":"));
             info.append("(");
             info.append(bytes_to_ip(arp->sender_host));
             info.append(")");

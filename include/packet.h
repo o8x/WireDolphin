@@ -22,7 +22,7 @@ class Packet {
     int tcp_header_len = 0;
     int ip_version = 0;
     u_short type_flag{};
-    const u_char* payload = nullptr;
+    u_char payload[2048] = {};
     ipv4_header* ipv4 = nullptr;
     ipv6_header* ipv6 = nullptr;
     tcp_header* tcp = nullptr;
@@ -81,5 +81,5 @@ public:
     void set_info(const string& info);
     void set_time(const string& time);
     void set_type_flag(u_short);
-    void set_payload(const u_char* payload);
+    void set_payload(const u_char** pkt_data);
 };

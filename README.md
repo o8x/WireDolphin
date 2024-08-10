@@ -21,12 +21,11 @@ WireDolphin
 - [ ] #include #define 自动化格式化工具
 - [x] ARP 解析
 - [ ] ICMP 解析
-- [ ] HTTP 解析
+- [x] HTTP 解析
 - [ ] DNS 解析
 - [ ] 代理协议解析(socks5)
 - [ ] HTTPS client hello 识别
 - [ ] 识别 TCP 分段丢失、乱序、重传
-- [ ] 识别 TCP、HTTP、更多协议的流
 - [ ] 网卡、会话、IP维度的统计能力
 - [x] 表格根据协议内容按不同颜色展示
 - [ ] 识别 VLAN

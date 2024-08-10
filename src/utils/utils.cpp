@@ -44,6 +44,11 @@ string bytes_to_string(const u_char* byte, int size, const string& spliter) {
 [[nodiscard]] string byte_to_ascii(const u_char byte) {
     std::ostringstream oss;
     oss << std::uppercase << std::hex << ntohs(byte << 8);
+
+    if (oss.str().length() == 1) {
+        return string("0").append(oss.str());
+    }
+
     return oss.str();
 }
 
