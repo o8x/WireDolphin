@@ -28,6 +28,20 @@ void MainWindow::closeEvent(QCloseEvent* event) {
     hide();
 }
 
+MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
+    ui->setupUi(this);
+
+    packets = vector<Packet*>();
+    packetHandler = new PacketSource(this, &packets);
+    systemTrayIcon = new QSystemTrayIcon();
+    statsWindow = new StatsWindow();
+
+    initWindow();
+    initWidgets();
+    initInterfaceList();
+    initSlots();
+}
+
 void MainWindow::initWindow() {
     QIcon icon;
     icon.addPixmap(QWidget().style()->standardIcon(QStyle::SP_DriveNetIcon).pixmap(QSize(16, 16)));
@@ -36,10 +50,18 @@ void MainWindow::initWindow() {
     systemTrayIcon->setToolTip("WireDolphin");
     systemTrayIcon->show();
 
+    // 系统通知
+    systemTrayIcon->showMessage("title", "message", QSystemTrayIcon::MessageIcon::Information, 3000);
+
     QMenu menu;
+    QAction* stats = new QAction("Stats");
     QAction* quit = new QAction("Exit");
-    menu.addAction(quit);
+    menu.addActions({stats, quit});
     systemTrayIcon->setContextMenu(&menu);
+
+    connect(stats, &QAction::triggered, this, [this]() {
+        statsWindow->show();
+    });
 
     connect(quit, &QAction::triggered, this, [this]() {
         exit(0);
@@ -48,19 +70,6 @@ void MainWindow::initWindow() {
     connect(systemTrayIcon, &QSystemTrayIcon::activated, this, [this]() {
         show();
     });
-}
-
-MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
-    ui->setupUi(this);
-
-    packets = vector<Packet*>();
-    packetHandler = new PacketSource(this, &packets);
-    systemTrayIcon = new QSystemTrayIcon();
-
-    initWindow();
-    initWidgets();
-    initInterfaceList();
-    initSlots();
 }
 
 MainWindow::~MainWindow() {

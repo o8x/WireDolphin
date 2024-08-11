@@ -8,6 +8,7 @@
 #include <QSystemTrayIcon>
 
 #include "packetsource.h"
+#include "statswindow.h"
 
 #define SNAP_LEN 128*1024*1024
 #define PROMISC 1
@@ -61,4 +62,5 @@ private:
     QTreeWidgetItem* applicationTree = nullptr;
     QMenu* hexTableMenu = nullptr;
     QSystemTrayIcon* systemTrayIcon = nullptr;
+    StatsWindow* statsWindow = nullptr;
 };
