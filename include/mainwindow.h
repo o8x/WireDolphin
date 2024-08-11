@@ -8,6 +8,7 @@
 #include <QSystemTrayIcon>
 
 #include "packetsource.h"
+#include "statswindow.h"
 
 #define SNAP_LEN 128*1024*1024
 #define PROMISC 1
@@ -38,7 +39,6 @@ public:
     void acceptPacket(int index) const;
     void initSlots();
     void loadOfflineFile() const;
-    void slotContextMenu(QPoint pos);
     void tableItemClicked(const QModelIndex& index);
     void toggleStartBtn();
     void initWidgets();
@@ -61,4 +61,5 @@ private:
     QTreeWidgetItem* applicationTree = nullptr;
     QMenu* hexTableMenu = nullptr;
     QSystemTrayIcon* systemTrayIcon = nullptr;
+    StatsWindow* statsWindow = nullptr;
 };

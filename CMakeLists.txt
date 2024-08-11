@@ -4,7 +4,7 @@ project(wiredolphin)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(untitled VERSION 0.1 LANGUAGES CXX)
@@ -24,8 +24,8 @@ add_executable(wiredolphin
         src/packet/packetsource.cpp
         src/utils/utils.cpp
         src/packet/packet.cpp
-        src/mainwindow.cpp
-        src/mainwindow.ui
+        src/window/mainwindow.cpp
+        src/window/mainwindow.ui
         src/interface.cpp
         src/dissectors/ipv4.cpp
         src/dissectors/ipv6.cpp
@@ -38,10 +38,13 @@ add_executable(wiredolphin
         include/dissectors/udp.h
         include/dissectors/http.h
         src/dissectors/http.cpp
+        include/statswindow.h
+        src/window/stats/statswindow.cpp
+        src/window/stats/statswindow.ui
 )
 
-find_package(Qt6 COMPONENTS Core Gui Widgets REQUIRED)
-target_link_libraries(wiredolphin PRIVATE Qt::Core Qt::Gui Qt::Widgets pcap)
+find_package(Qt6 COMPONENTS Core Gui Widgets Charts REQUIRED)
+target_link_libraries(wiredolphin PRIVATE Qt::Core Qt::Gui Qt::Charts Qt::Widgets pcap)
 target_link_directories(wiredolphin PRIVATE /opt/homebrew/opt/libpcap/lib)
 target_include_directories(wiredolphin PRIVATE /opt/homebrew/opt/libpcap/include)
 
