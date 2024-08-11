@@ -20,7 +20,7 @@ using namespace std;
 #endif
 
 #define HEX_TABLE_FONT_SIZE 11
-#define HEX_TABLE_SIDE_LENGTH 18
+#define HEX_TABLE_SIDE_LENGTH 18 // 最小尺寸 19 * 22
 
 void MainWindow::closeEvent(QCloseEvent* event) {
     event->ignore();
@@ -227,13 +227,19 @@ void MainWindow::initWidgets() {
         ui->hexTable->setColumnWidth(i, HEX_TABLE_SIDE_LENGTH);
     }
 
-    // 开启自定义右键菜单
-    ui->hexTable->setContextMenuPolicy(Qt::CustomContextMenu);
-
-    // TODO 回调函数
-    hexTableMenu = new QMenu(ui->hexTable);
-    hexTableMenu->addAction(new QAction("as HEX"));
-    hexTableMenu->addAction("as ASCII");
+    // ascii 查看器
+    ui->asciiViewTable->setRowCount(0);
+    ui->asciiViewTable->setColumnCount(colCount);
+    ui->asciiViewTable->setFont(QFont(HEX_TABLE_FONT_FAMILY, HEX_TABLE_FONT_SIZE, QFont::Normal));
+    ui->asciiViewTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
+    ui->asciiViewTable->horizontalHeader()->setHidden(true);
+    ui->asciiViewTable->horizontalHeader()->setVisible(false);
+    ui->asciiViewTable->setShowGrid(false);
+    ui->asciiViewTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->asciiViewTable->setTextElideMode(Qt::ElideNone);
+    for (int i = 0; i < colCount; i++) {
+        ui->asciiViewTable->setColumnWidth(i, HEX_TABLE_SIDE_LENGTH / 2);
+    }
 }
 
 void MainWindow::updateCaptureStatusLabel() const {
@@ -299,7 +305,6 @@ void MainWindow::initSlots() {
     connect(packetHandler, &PacketSource::listen_stopped, this, &MainWindow::captureInterfaceStopped);
     connect(packetHandler, &PacketSource::packet_pushed, this, &MainWindow::acceptPacket);
     connect(ui->packetsTable, &QTableWidget::clicked, this, &MainWindow::tableItemClicked);
-    connect(ui->hexTable, &QTableWidget::customContextMenuRequested, this, &MainWindow::slotContextMenu);
     connect(ui->loadFileBtn, &QPushButton::clicked, this, &MainWindow::loadOfflineFile);
 }
 
@@ -323,13 +328,6 @@ void MainWindow::loadOfflineFile() const {
     packetHandler->set_filename(filename.toStdString());
     packetHandler->init(nullptr, interface);
     packetHandler->start();
-}
-
-void MainWindow::slotContextMenu(QPoint pos) {
-    auto index = ui->hexTable->indexAt(pos);
-    if (index.isValid()) {
-        hexTableMenu->exec(QCursor::pos());
-    }
 }
 
 void MainWindow::tableItemClicked(const QModelIndex& index) {
@@ -501,15 +499,28 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
     ui->hexTable->clearContents();
     ui->hexTable->setRowCount(0);
 
-    const int line_count = ceil(static_cast<float>(packet->get_len()) / static_cast<float>(16));
+    int line_count = ceil(static_cast<float>(packet->get_len()) / static_cast<float>(16));
     for (int i = 0; i < line_count; i++) {
         ui->hexTable->insertRow(i);
         ui->hexTable->setRowHeight(i, HEX_TABLE_SIDE_LENGTH);
     }
 
     int row = 0;
+    string content;
     const u_char* payload = packet->get_payload();
     for (int i = 0; i < packet->get_len(); i++) {
+        // 收集可见字符和换行，以填充 Text View
+        if (char c = static_cast<char>(payload[i]); c == 10 || c == 13) {
+            content += c; // 保留换行
+        } else {
+            if (c > 31 && c < 127) { // ASCII 可见字符
+                content += c;
+            } else {
+                content += ".";
+            }
+        }
+
+        // 移动行游标
         if (i > 0 && i % 16 == 0) {
             row++;
         }
@@ -523,6 +534,50 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
         // 需要向右移动一个格子，避免占用刚才的空格
         int index = i % 16 < 8 ? i % 16 : (i % 16) + 1;
         ui->hexTable->setItem(row, index, new QTableWidgetItem(byte_to_ascii(payload[i]).c_str()));
+    }
+
+    // text 查看器
+    ui->plainTextEdit->clear();
+    ui->plainTextEdit->setReadOnly(true);
+    ui->plainTextEdit->appendPlainText(content.c_str());
+
+    // ascii 查看器
+    ui->asciiViewTable->clearContents();
+    ui->asciiViewTable->setRowCount(0);
+
+    line_count = ceil(static_cast<float>(packet->get_len()) / static_cast<float>(32));
+    for (int i = 0; i < line_count; i++) {
+        ui->asciiViewTable->insertRow(i);
+        ui->asciiViewTable->setRowHeight(i, HEX_TABLE_SIDE_LENGTH);
+    }
+
+    row = 0;
+    for (int i = 0; i < packet->get_len(); i += 2) {
+        if (i > 0 && i % 32 == 0) {
+            row++;
+        }
+
+        if (i % 16 == 0 && i % 32 != 0) {
+            ui->asciiViewTable->setItem(row, 16, new QTableWidgetItem(" "));
+        }
+
+        string c;
+        if (payload[i] > 31 && payload[i] < 127) { // 可见字符
+            c += payload[i];
+        } else {
+            c += ".";
+        }
+
+        // 一个格子填充两个字符
+        if (payload[i + 1] > 31 && payload[i + 1] < 127) { // 可见字符
+            c += payload[i + 1];
+        } else {
+            c += ".";
+        }
+
+        // 一个格子填充两个字符，所以应该偏移两格
+        int index = i % 32 < 16 ? i % 32 : (i % 32) + 2;
+        ui->asciiViewTable->setItem(row, index / 2, new QTableWidgetItem(c.c_str()));
     }
 }
 
