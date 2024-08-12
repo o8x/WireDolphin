@@ -71,7 +71,8 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/icon.icns"
 )
 
-add_executable(${PROJECT_NAME}-cli
+set(CLI_PROJECT_NAME ${PROJECT_NAME}-cli)
+add_executable(${CLI_PROJECT_NAME}
         src/interface.cpp
         include/interface.h
         include/logger.h
@@ -79,6 +80,6 @@ add_executable(${PROJECT_NAME}-cli
         cli.cpp
 )
 
-target_link_libraries(${PROJECT_NAME}-cli PRIVATE pcap)
-target_link_directories(${PROJECT_NAME}-cli PRIVATE /opt/homebrew/opt/libpcap/lib)
-target_include_directories(${PROJECT_NAME}-cli PRIVATE /opt/homebrew/opt/libpcap/include)
+target_link_libraries(${CLI_PROJECT_NAME} PRIVATE pcap)
+target_link_directories(${CLI_PROJECT_NAME} PRIVATE /opt/homebrew/opt/libpcap/lib)
+target_include_directories(${CLI_PROJECT_NAME} PRIVATE /opt/homebrew/opt/libpcap/include)
