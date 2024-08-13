@@ -46,10 +46,16 @@ add_executable(${PROJECT_NAME}
         src/window/stats/statswindow.ui
 )
 
+# qt core
 find_package(Qt6 COMPONENTS Core Gui Widgets Charts REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core Qt::Gui Qt::Charts Qt::Widgets pcap)
-target_link_directories(${PROJECT_NAME} PRIVATE /opt/homebrew/opt/libpcap/lib)
-target_include_directories(${PROJECT_NAME} PRIVATE /opt/homebrew/opt/libpcap/include)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core Qt::Gui Qt::Charts Qt::Widgets)
+
+# libpcap
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(VCPKG_DEPS REQUIRED libpcap)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${VCPKG_DEPS_LIBRARIES})
+target_link_directories(${PROJECT_NAME} PRIVATE ${VCPKG_DEPS_LIBRARY_DIRS})
+target_include_directories(${PROJECT_NAME} PRIVATE ${VCPKG_DEPS_INCLUDE_DIRS})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
         ${BUNDLE_ID_OPTION}

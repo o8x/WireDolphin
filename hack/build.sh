@@ -3,7 +3,11 @@
 CMAKE_BUILD_DIR="cmake-build-release"
 
 hack/makeicns.sh
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=$(which ninja) -G Ninja -S $(pwd) -B ${CMAKE_BUILD_DIR}
+cmake -G Ninja -S $(pwd) -B ${CMAKE_BUILD_DIR} \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_MAKE_PROGRAM=`which ninja` \
+	-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT:-'~/vcpkg'}/scripts/buildsystems/vcpkg.cmake
+
 cmake --build ${CMAKE_BUILD_DIR} --target all -j `nproc`
 
 cd ${CMAKE_BUILD_DIR}
