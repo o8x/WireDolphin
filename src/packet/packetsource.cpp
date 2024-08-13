@@ -1,37 +1,42 @@
-#include <iostream>
-#include <QDebug>
-#include <QtCore/qcoreapplication.h>
-#include "interface.h"
+#include "packetsource.h"
+#include "dissectors/arp.h"
 #include "dissectors/ethernet.h"
 #include "dissectors/ipv4.h"
 #include "dissectors/ipv6.h"
-#include "packetsource.h"
-#include "utils.h"
-#include "dissectors/arp.h"
 #include "dissectors/tcp.h"
 #include "dissectors/udp.h"
+#include "interface.h"
+#include "utils.h"
+#include <QDebug>
+#include <QtCore/qcoreapplication.h>
+#include <iostream>
 
 using namespace std;
 
-void PacketSource::init(pcap_if_t* device, pcap_t* interface) {
+void PacketSource::init(pcap_if_t* device, pcap_t* interface)
+{
     this->device = device;
     this->interface = interface;
     this->running = true;
 }
 
-string PacketSource::get_filename() const {
+string PacketSource::get_filename() const
+{
     return filename;
 }
 
-void PacketSource::set_filename(const string& filename) {
+void PacketSource::set_filename(const string& filename)
+{
     this->filename = filename;
 }
 
-pcap_t* PacketSource::get_interface() const {
+pcap_t* PacketSource::get_interface() const
+{
     return interface;
 }
 
-void PacketSource::free() {
+void PacketSource::free()
+{
     this->running = false;
 
     if (this->interface != nullptr) {
@@ -44,7 +49,8 @@ void PacketSource::free() {
     }
 }
 
-void PacketSource::run() {
+void PacketSource::run()
+{
     const string name = this->device ? this->device->name : this->filename;
 
     emit listen_started(name, "on");
@@ -77,7 +83,8 @@ void PacketSource::run() {
     emit this->listen_stopped(name, "off");
 }
 
-int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
+int PacketSource::parse_header(const u_char** pkt_data, Packet*& p)
+{
     ethernet_header* eth = (ETHERNET_HEADER*)*pkt_data;
 
     p->set_link_src(bytes_to_ascii(eth->link_src, 6, ":"));
@@ -160,9 +167,8 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p) {
             }
 
             if (flags->PSH) {
-                info.append("PSH ").
-                     append(to_string(p->get_len() - 14 - p->get_ip_header_len() - p->get_tcp_header_len())).
-                     append("byte ");
+                auto len = to_string(p->get_len() - 14 - p->get_ip_header_len() - p->get_tcp_header_len());
+                info.append("PSH ").append(len).append("byte ");
             }
 
             if (flags->RST) {

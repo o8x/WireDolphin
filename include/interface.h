@@ -1,6 +1,6 @@
 #pragma once
-#include <string>
 #include <pcap/pcap.h>
+#include <string>
 using namespace std;
 
 pcap_t* open_offline_pcap(const char* name, int tstamp_precision, char* error_buffer);

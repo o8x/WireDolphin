@@ -1,16 +1,19 @@
 cmake_minimum_required(VERSION 3.29)
-project(wiredolphin)
 
+set(CMAKE_PROJECT_NAME WireDolphin)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(QT_VERSION 6.7.2)
+# CMAKE_PREFIX_PATH 效果一致，但会出现一些警告
+set(Qt6_DIR $ENV{HOME}/Qt6/${QT_VERSION}/macos/lib/cmake/Qt6)
 
-project(untitled VERSION 0.1 LANGUAGES CXX)
+project(WireDolphin VERSION 0.1.0 LANGUAGES CXX)
 
 include_directories(include)
-add_executable(wiredolphin
+add_executable(${PROJECT_NAME}
         main.cpp
         include/packetsource.h
         include/utils.h
@@ -43,12 +46,18 @@ add_executable(wiredolphin
         src/window/stats/statswindow.ui
 )
 
+# qt core
 find_package(Qt6 COMPONENTS Core Gui Widgets Charts REQUIRED)
-target_link_libraries(wiredolphin PRIVATE Qt::Core Qt::Gui Qt::Charts Qt::Widgets pcap)
-target_link_directories(wiredolphin PRIVATE /opt/homebrew/opt/libpcap/lib)
-target_include_directories(wiredolphin PRIVATE /opt/homebrew/opt/libpcap/include)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core Qt::Gui Qt::Charts Qt::Widgets)
 
-set_target_properties(wiredolphin PROPERTIES
+# libpcap
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(VCPKG_DEPS REQUIRED libpcap)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${VCPKG_DEPS_LIBRARIES})
+target_link_directories(${PROJECT_NAME} PRIVATE ${VCPKG_DEPS_LIBRARY_DIRS})
+target_include_directories(${PROJECT_NAME} PRIVATE ${VCPKG_DEPS_INCLUDE_DIRS})
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
         ${BUNDLE_ID_OPTION}
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
@@ -57,21 +66,16 @@ set_target_properties(wiredolphin PROPERTIES
 )
 
 include(GNUInstallDirs)
-qt_finalize_executable(wiredolphin)
-install(TARGETS wiredolphin
+qt_finalize_executable(${PROJECT_NAME})
+install(TARGETS ${PROJECT_NAME}
         BUNDLE DESTINATION .
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-add_executable(wiredolphin-cli
-        src/interface.cpp
-        include/interface.h
-        include/logger.h
-        src/logger/logger.cpp
-        cli.cpp
+set(CMAKE_AUTORCC ON)
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.icns"
+        "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/icon.icns"
 )
-
-target_link_libraries(wiredolphin-cli PRIVATE pcap)
-target_link_directories(wiredolphin-cli PRIVATE /opt/homebrew/opt/libpcap/lib)
-target_include_directories(wiredolphin-cli PRIVATE /opt/homebrew/opt/libpcap/include)

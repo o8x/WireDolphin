@@ -3,21 +3,21 @@
 
 #include <QWidget>
 
-
 QT_BEGIN_NAMESPACE
-namespace Ui { class stats; }
+namespace Ui {
+class stats;
+}
 QT_END_NAMESPACE
 
 class StatsWindow : public QWidget {
-Q_OBJECT
+    Q_OBJECT
 
 public:
-    explicit StatsWindow(QWidget *parent = nullptr);
+    explicit StatsWindow(QWidget* parent = nullptr);
     ~StatsWindow() override;
 
 private:
-    Ui::stats *ui;
+    Ui::stats* ui;
 };
 
-
-#endif //STATS_H
+#endif // STATS_H

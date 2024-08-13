@@ -1,0 +1,11 @@
+{
+    "name":             "wiredolphin",
+    "version-string":   "1.0.0",
+    "builtin-baseline": "e590c2b30c08caf1dd8d612ec602a003f9784b7d",
+    "dependencies":     [
+        {
+            "name":      "libpcap",
+            "version>=": "1.10.4#1"
+        }
+    ]
+}
