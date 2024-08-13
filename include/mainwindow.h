@@ -1,22 +1,22 @@
 #pragma once
 
-#include <QTreeWidgetItem>
-#include <QMainWindow>
-#include <QLabel>
 #include <QCloseEvent>
+#include <QLabel>
+#include <QMainWindow>
 #include <QStandardItemModel>
 #include <QSystemTrayIcon>
+#include <QTreeWidgetItem>
 
 #include "packetsource.h"
 #include "statswindow.h"
 
-#define SNAP_LEN 128*1024*1024
+#define SNAP_LEN 128 * 1024 * 1024
 #define PROMISC 1
 
 QT_BEGIN_NAMESPACE
 
 namespace Ui {
-    class MainWindow;
+class MainWindow;
 }
 
 QT_END_NAMESPACE

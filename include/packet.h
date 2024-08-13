@@ -1,8 +1,8 @@
 #pragma once
 
 #include <iostream>
-#include <string>
 #include <pcap.h>
+#include <string>
 #include <vector>
 
 #include "dissectors/arp.h"
@@ -21,7 +21,7 @@ class Packet {
     int ip_header_len = 0;
     int tcp_header_len = 0;
     int ip_version = 0;
-    u_short type_flag{};
+    u_short type_flag {};
     u_char payload[2048] = {};
     ipv4_header* ipv4 = nullptr;
     ipv6_header* ipv6 = nullptr;

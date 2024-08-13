@@ -1,8 +1,9 @@
-#include <iostream>
 #include "interface.h"
 #include "logger.h"
+#include <iostream>
 
-pcap_t* open_offline_pcap(const char* name, int tstamp_precision, char* error_buffer) {
+pcap_t* open_offline_pcap(const char* name, int tstamp_precision, char* error_buffer)
+{
     pcap_t* pc = pcap_open_offline_with_tstamp_precision(name, tstamp_precision, error_buffer);
     if (pc == nullptr) {
         logger::error("open %s, error %s", name, error_buffer);
@@ -11,7 +12,8 @@ pcap_t* open_offline_pcap(const char* name, int tstamp_precision, char* error_bu
     return pc;
 }
 
-pcap_t* open_interface(const char* device, char* ebuf) {
+pcap_t* open_interface(const char* device, char* ebuf)
+{
     pcap_t* pc;
     int status;
     char* cp;
@@ -76,7 +78,7 @@ pcap_t* open_interface(const char* device, char* ebuf) {
             logger::errorln("%s: Can't set time stamp type: %s", device, pcap_statustostr(status));
         } else if (status > 0) {
             logger::errorln("When trying to set timestamp type '%s' on %s: %s",
-                            pcap_tstamp_type_val_to_name(jflag), device, pcap_statustostr(status));
+                pcap_tstamp_type_val_to_name(jflag), device, pcap_statustostr(status));
         }
     }
 
@@ -119,20 +121,23 @@ pcap_t* open_interface(const char* device, char* ebuf) {
     return pc;
 }
 
-string get_dlt_name(pcap_t* pc) {
+string get_dlt_name(pcap_t* pc)
+{
     int dlt = pcap_datalink(pc);
 
     return pcap_datalink_val_to_name(dlt);
 }
 
-string get_dlt_desc(pcap_t* pc) {
+string get_dlt_desc(pcap_t* pc)
+{
     int dlt = pcap_datalink(pc);
 
     return pcap_datalink_val_to_description(dlt);
 }
 
-void print_stat_info(pcap_t* inet, const size_t packet_num, chrono::time_point<chrono::steady_clock> time_start) {
-    pcap_stat stats{};
+void print_stat_info(pcap_t* inet, const size_t packet_num, chrono::time_point<chrono::steady_clock> time_start)
+{
+    pcap_stat stats {};
     pcap_stats(inet, &stats);
 
     auto duration = std::chrono::high_resolution_clock::now() - time_start;

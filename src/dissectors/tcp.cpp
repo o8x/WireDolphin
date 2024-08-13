@@ -2,7 +2,8 @@
 
 #include <iostream>
 
-void parse_tcp_flags(tcp_flags* dst, u_char flags) {
+void parse_tcp_flags(tcp_flags* dst, u_char flags)
+{
     dst->CWR = (flags >> 7) & 1;
     dst->ECE = (flags >> 6) & 1;
     dst->URG = (flags >> 5) & 1;

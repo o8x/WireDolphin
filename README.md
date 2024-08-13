@@ -24,7 +24,7 @@ WireDolphin
 - [x] 支持导入 pcap 并进行分析
 - [x] 软件图标
 - [x] 生成可分发 dmg
-- [ ] #include #define 自动化格式化工具
+- [x] 代码自动化格式化工具 (clang-format)
 - [ ] ICMP 解析
 - [ ] DNS 解析
 - [ ] TCP 流跟踪

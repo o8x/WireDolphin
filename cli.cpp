@@ -1,11 +1,12 @@
-#include <iostream>
 #include "interface.h"
 #include "unistd.h"
+#include <iostream>
 
 pcap_t* inet = open_interface("en1", nullptr);
 int packet_num = 0;
 
-void signalHandler(int) {
+void signalHandler(int)
+{
     pcap_stat stats;
     pcap_stats(inet, &stats);
 
@@ -15,11 +16,13 @@ void signalHandler(int) {
     std::cout << stats.ps_drop << " dropped by kernel" << std::endl;
 }
 
-void read_packet(u_char* user, const pcap_pkthdr* pkt_header, const u_char*) {
+void read_packet(u_char* user, const pcap_pkthdr* pkt_header, const u_char*)
+{
     packet_num++;
 }
 
-int main(int, char*[]) {
+int main(int, char*[])
+{
     signal(SIGUSR1, signalHandler);
 
     std::cout << getpid() << std::endl;

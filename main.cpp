@@ -1,10 +1,11 @@
-#include <iostream>
-#include <mainwindow.h>
 #include <QApplication>
 #include <QMenu>
 #include <QSystemTrayIcon>
+#include <iostream>
+#include <mainwindow.h>
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     QApplication a(argc, argv);
 
     try {

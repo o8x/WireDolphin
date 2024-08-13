@@ -1,15 +1,15 @@
-#include <iostream>
-#include <QMessageBox>
-#include <QMenu>
 #include <QFileDialog>
+#include <QMenu>
+#include <QMessageBox>
 #include <QScrollBar>
+#include <iostream>
 
-#include "mainwindow.h"
-#include <QSystemTrayIcon>
 #include "interface.h"
+#include "mainwindow.h"
 #include "packetsource.h"
 #include "ui_MainWindow.h"
 #include "utils.h"
+#include <QSystemTrayIcon>
 
 using namespace std;
 
@@ -22,13 +22,17 @@ using namespace std;
 #define HEX_TABLE_FONT_SIZE 11
 #define HEX_TABLE_SIDE_LENGTH 18 // 最小尺寸 19 * 22
 
-void MainWindow::closeEvent(QCloseEvent* event) {
+void MainWindow::closeEvent(QCloseEvent* event)
+{
     event->ignore();
 
     hide();
 }
 
-MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
+MainWindow::MainWindow(QWidget* parent)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
+{
     ui->setupUi(this);
 
     packets = vector<Packet*>();
@@ -42,7 +46,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     initSlots();
 }
 
-void MainWindow::initWindow() {
+void MainWindow::initWindow()
+{
     QIcon icon;
     icon.addPixmap(QWidget().style()->standardIcon(QStyle::SP_DriveNetIcon).pixmap(QSize(16, 16)));
 
@@ -56,7 +61,7 @@ void MainWindow::initWindow() {
     QMenu menu;
     QAction* stats = new QAction("Stats");
     QAction* quit = new QAction("Exit");
-    menu.addActions({stats, quit});
+    menu.addActions({ stats, quit });
     systemTrayIcon->setContextMenu(&menu);
 
     connect(stats, &QAction::triggered, this, [this]() {
@@ -72,7 +77,8 @@ void MainWindow::initWindow() {
     });
 }
 
-MainWindow::~MainWindow() {
+MainWindow::~MainWindow()
+{
     packetHandler->free();
     pcap_freealldevs(allDevs);
     freePackets();
@@ -90,12 +96,14 @@ MainWindow::~MainWindow() {
     delete systemTrayIcon;
 }
 
-void MainWindow::changeInterfaceIndex(int index) const {
+void MainWindow::changeInterfaceIndex(int index) const
+{
     ui->startBtn->setDisabled(index == 0);
     ui->loadFileBtn->setDisabled(index != 0);
 }
 
-void MainWindow::freePackets() {
+void MainWindow::freePackets()
+{
     // 使用智能指针可以避免手动 delete 过程
     // 但是现在不知道智能指针的原理，暂时先手动释放
     // auto packets = vector<std::shared_ptr<Packet>>();
@@ -109,7 +117,8 @@ void MainWindow::freePackets() {
     vector<Packet*>().swap(packets);
 }
 
-void MainWindow::captureInterfaceStarted(string name, string message) {
+void MainWindow::captureInterfaceStarted(string name, string message)
+{
     freePackets();
 
     time_start = std::chrono::high_resolution_clock::now();
@@ -127,7 +136,8 @@ void MainWindow::captureInterfaceStarted(string name, string message) {
     updateCaptureStatusLabel();
 }
 
-void MainWindow::captureInterfaceStopped(string name, string message) const {
+void MainWindow::captureInterfaceStopped(string name, string message) const
+{
     ui->interfaceList->setDisabled(false);
     ui->resetBtn->setDisabled(true);
     ui->startBtn->setText("Start");
@@ -136,12 +146,14 @@ void MainWindow::captureInterfaceStopped(string name, string message) const {
     updateCaptureStatusLabel();
 }
 
-void MainWindow::resetCapture() {
+void MainWindow::resetCapture()
+{
     toggleStartBtn();
     toggleStartBtn();
 }
 
-void MainWindow::toggleStartBtn() {
+void MainWindow::toggleStartBtn()
+{
     captureStart = !captureStart;
 
     QString name = ui->interfaceList->currentText();
@@ -170,7 +182,8 @@ void MainWindow::toggleStartBtn() {
     packetHandler->wait();
 }
 
-void MainWindow::initWidgets() {
+void MainWindow::initWidgets()
+{
     // 设置默认拉伸因子，表格占 2/3，树占 1/3
     ui->detailSplitter->setStretchFactor(0, 2);
     ui->detailSplitter->setStretchFactor(1, 1);
@@ -187,7 +200,13 @@ void MainWindow::initWidgets() {
     ui->bpfEditor->setPlaceholderText(" filter expression");
 
     const QStringList title = {
-        "NO.", "Time", "Source", "Destination", "Protocol", "Len", "Info",
+        "NO.",
+        "Time",
+        "Source",
+        "Destination",
+        "Protocol",
+        "Len",
+        "Info",
     };
     ui->packetsTable->setColumnCount(title.length());
     ui->packetsTable->setFont(QFont("", 11, QFont::Normal));
@@ -242,7 +261,8 @@ void MainWindow::initWidgets() {
     }
 }
 
-void MainWindow::updateCaptureStatusLabel() const {
+void MainWindow::updateCaptureStatusLabel() const
+{
     if (packets.empty()) {
         captureStatusLabel->setText("");
         return;
@@ -252,7 +272,8 @@ void MainWindow::updateCaptureStatusLabel() const {
     captureStatusLabel->setText("packets: " + QString::number(size) + "/" + QString::number(packets.size()));
 }
 
-void MainWindow::acceptPacket(const int index) const {
+void MainWindow::acceptPacket(const int index) const
+{
     auto packet = packets[index];
 
     string src = packet->get_host_src();
@@ -297,7 +318,8 @@ void MainWindow::acceptPacket(const int index) const {
     updateCaptureStatusLabel();
 }
 
-void MainWindow::initSlots() {
+void MainWindow::initSlots()
+{
     connect(ui->resetBtn, &QPushButton::clicked, this, &MainWindow::resetCapture);
     connect(ui->startBtn, &QPushButton::clicked, this, &MainWindow::toggleStartBtn);
     connect(ui->interfaceList, &QComboBox::currentIndexChanged, this, &MainWindow::changeInterfaceIndex);
@@ -308,11 +330,11 @@ void MainWindow::initSlots() {
     connect(ui->loadFileBtn, &QPushButton::clicked, this, &MainWindow::loadOfflineFile);
 }
 
-void MainWindow::loadOfflineFile() const {
+void MainWindow::loadOfflineFile() const
+{
     QString filename = QFileDialog::getOpenFileName(
         ui->loadFileBtn, "Select a pcap file",
-        QDir::homePath(), "pcap file(*.pcap *.pcapng)"
-    );
+        QDir::homePath(), "pcap file(*.pcap *.pcapng)");
 
     if (filename.isEmpty()) {
         return;
@@ -330,7 +352,8 @@ void MainWindow::loadOfflineFile() const {
     packetHandler->start();
 }
 
-void MainWindow::tableItemClicked(const QModelIndex& index) {
+void MainWindow::tableItemClicked(const QModelIndex& index)
+{
     auto packet = packets[index.row()];
 
     delete frame;
@@ -356,13 +379,7 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
         new QTreeWidgetItem(QStringList(string("source: ").append(packet->get_link_src()).c_str())),
         new QTreeWidgetItem(QStringList(string("destination: ").append(packet->get_link_dst()).c_str())),
         new QTreeWidgetItem(QStringList(
-            string("type: ").
-            append(packet->get_type()).
-            append("(hex:").
-            append(to_string(packet->get_type_flag())).
-            append(")").
-            c_str()
-        )),
+            string("type: ").append(packet->get_type()).append("(hex:").append(to_string(packet->get_type_flag())).append(")").c_str())),
     });
 
     networkTree = new QTreeWidgetItem(ui->layerTree);
@@ -581,7 +598,8 @@ void MainWindow::tableItemClicked(const QModelIndex& index) {
     }
 }
 
-void MainWindow::initInterfaceList() {
+void MainWindow::initInterfaceList()
+{
     char error_buffer[PCAP_ERRBUF_SIZE];
 
     if (pcap_findalldevs(&allDevs, error_buffer) != 0) {

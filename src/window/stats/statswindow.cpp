@@ -1,12 +1,14 @@
 #include "statswindow.h"
-#include <iostream>
-#include <QWindow>
+#include "ui_statswindow.h"
 #include <QChartView>
 #include <QLineSeries>
-#include "ui_statswindow.h"
+#include <QWindow>
+#include <iostream>
 
-StatsWindow::StatsWindow(QWidget* parent) :
-    QWidget(parent), ui(new Ui::stats) {
+StatsWindow::StatsWindow(QWidget* parent)
+    : QWidget(parent)
+    , ui(new Ui::stats)
+{
     ui->setupUi(this);
 
     setWindowTitle("Statistics");
@@ -14,6 +16,7 @@ StatsWindow::StatsWindow(QWidget* parent) :
     setFixedSize(this->width(), this->height());
 }
 
-StatsWindow::~StatsWindow() {
+StatsWindow::~StatsWindow()
+{
     delete ui;
 }
