@@ -23,7 +23,6 @@ add_executable(${PROJECT_NAME}
         include/dissectors/ipv4.h
         include/dissectors/ipv6.h
         include/dissectors/ethernet.h
-        include/logger.h
         src/packet/packetsource.cpp
         src/utils/utils.cpp
         src/packet/packet.cpp
@@ -32,7 +31,6 @@ add_executable(${PROJECT_NAME}
         src/interface.cpp
         src/dissectors/ipv4.cpp
         src/dissectors/ipv6.cpp
-        src/logger/logger.cpp
         src/dissectors/tcp.cpp
         include/dissectors/tcp.h
         include/dissectors/arp.h
@@ -46,9 +44,17 @@ add_executable(${PROJECT_NAME}
         src/window/stats/statswindow.ui
 )
 
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_definitions(-DDEBUG_BUILD)
+endif ()
+
 # qt core
 find_package(Qt6 COMPONENTS Core Gui Widgets Charts REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core Qt::Gui Qt::Charts Qt::Widgets)
+
+# glog
+find_package(glog CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE glog::glog)
 
 # libpcap
 find_package(PkgConfig REQUIRED)
@@ -73,9 +79,13 @@ install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-set(CMAKE_AUTORCC ON)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.icns"
         "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/icon.icns"
+)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+        "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/logs"
 )
