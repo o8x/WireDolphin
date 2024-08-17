@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.29)
+cmake_minimum_required(VERSION 3.28.6)
 
 set(CMAKE_PROJECT_NAME WireDolphin)
 set(CMAKE_AUTOMOC ON)
