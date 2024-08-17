@@ -36,8 +36,10 @@ int main(int argc, char* argv[])
         MainWindow w;
         // QT 似乎无法实现 titlebar hidden inset 的效果，只能完全隐藏边框
         // w.setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+        // w.move(50, 50);
+        // 标题默认有 28 的高度
+        w.resize(1700, 1000 - 28);
         // 在 Mac 下合并标题和工具栏
-        w.move(50, 50);
         w.setUnifiedTitleAndToolBarOnMac(true);
         w.setWindowTitle("🐬 WireDolphin");
         w.show();
