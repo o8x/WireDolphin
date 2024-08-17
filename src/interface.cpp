@@ -1,12 +1,13 @@
 #include "interface.h"
-#include "logger.h"
+#include <glog/log_severity.h>
+#include <glog/logging.h>
 #include <iostream>
 
 pcap_t* open_offline_pcap(const char* name, int tstamp_precision, char* error_buffer)
 {
     pcap_t* pc = pcap_open_offline_with_tstamp_precision(name, tstamp_precision, error_buffer);
     if (pc == nullptr) {
-        logger::error("open %s, error %s", name, error_buffer);
+        LOG(ERROR) << std::format("open {}, error {}", name, error_buffer);
     }
 
     return pc;
@@ -30,9 +31,11 @@ pcap_t* open_interface(const char* device, char* ebuf)
     // pcap_activate 之后可以获取到 No Such Device
     pc = pcap_create(device, ebuf);
 
+    LOG(INFO) << std::format("create device {}", device);
+
     status = pcap_set_tstamp_precision(pc, 0);
     if (status != 0) {
-        logger::errorln("%s: Can't set %ssecond time stamp precision: %s", device, 0, pcap_statustostr(status));
+        LOG(ERROR) << std::format("{}: Can't set {}second time stamp precision: {}", device, 0, pcap_statustostr(status));
     }
 
     if (pcap_can_set_rfmon(pc) == 1) {
@@ -44,40 +47,40 @@ pcap_t* open_interface(const char* device, char* ebuf)
     if (ndo_snaplen) {
         status = pcap_set_snaplen(pc, ndo_snaplen);
         if (status != 0) {
-            logger::errorln("%s: Can't set snapshot length: %s", device, pcap_statustostr(status));
+            LOG(ERROR) << std::format("{}: Can't set snapshot length: {}", device, pcap_statustostr(status));
         }
     }
 
     status = pcap_set_promisc(pc, !pflag);
     if (status != 0) {
-        logger::errorln("%s: Can't set promiscuous mode: %s", device, pcap_statustostr(status));
+        LOG(ERROR) << std::format("{}: Can't set promiscuous mode: {}", device, pcap_statustostr(status));
     }
 
     if (Iflag) {
         status = pcap_set_rfmon(pc, 1);
         if (status != 0) {
-            logger::errorln("%s: Can't set monitor mode: %s", device, pcap_statustostr(status));
+            LOG(ERROR) << std::format("{}: Can't set monitor mode: {}", device, pcap_statustostr(status));
         }
     }
 
     status = pcap_set_timeout(pc, timeout);
     if (status != 0) {
-        logger::errorln("%s: pcap_set_timeout failed: %s", device, pcap_statustostr(status));
+        LOG(ERROR) << std::format("{}: pcap_set_timeout failed: {}", device, pcap_statustostr(status));
     }
 
     if (Bflag != 0) {
         status = pcap_set_buffer_size(pc, Bflag);
         if (status != 0) {
-            logger::errorln("%s: Can't set buffer size: %s", device, pcap_statustostr(status));
+            LOG(ERROR) << std::format("{}: Can't set buffer size: {}", device, pcap_statustostr(status));
         }
     }
 
     if (jflag != -1) {
         status = pcap_set_tstamp_type(pc, jflag);
         if (status < 0) {
-            logger::errorln("%s: Can't set time stamp type: %s", device, pcap_statustostr(status));
+            LOG(ERROR) << std::format("{}: Can't set time stamp type: {}", device, pcap_statustostr(status));
         } else if (status > 0) {
-            logger::errorln("When trying to set timestamp type '%s' on %s: %s",
+            LOG(ERROR) << std::format("When trying to set timestamp type '{}' on {}: {}",
                 pcap_tstamp_type_val_to_name(jflag), device, pcap_statustostr(status));
         }
     }
@@ -86,13 +89,13 @@ pcap_t* open_interface(const char* device, char* ebuf)
     if (status < 0) {
         cp = pcap_geterr(pc);
         if (status == PCAP_ERROR) {
-            logger::errorln("%s", cp);
+            LOG(ERROR) << std::format("{}", cp);
         } else if (status == PCAP_ERROR_NO_SUCH_DEVICE) {
-            snprintf(ebuf, PCAP_ERRBUF_SIZE, "%s: %s\n(%s)", device, pcap_statustostr(status), cp);
+            LOG(ERROR) << std::format("{}: {} ({})", device, pcap_statustostr(status), cp);
         } else if (status == PCAP_ERROR_PERM_DENIED && *cp != '\0') {
-            logger::errorln("%s: %s\n(%s)", device, pcap_statustostr(status), cp);
+            LOG(ERROR) << std::format("{}: {} ({})", device, pcap_statustostr(status), cp);
         } else {
-            logger::errorln("%s: %s", device, pcap_statustostr(status));
+            LOG(ERROR) << std::format("{}: {}", device, pcap_statustostr(status));
         }
 
         pcap_close(pc);
@@ -102,11 +105,11 @@ pcap_t* open_interface(const char* device, char* ebuf)
     if (status > 0) {
         cp = pcap_geterr(pc);
         if (status == PCAP_WARNING) {
-            logger::errorln("%s", cp);
+            LOG(ERROR) << std::format("{}", cp);
         } else if (status == PCAP_WARNING_PROMISC_NOTSUP && *cp != '\0') {
-            logger::errorln("%s: %s\n(%s)", device, pcap_statustostr(status), cp);
+            LOG(ERROR) << std::format("{}: {}\n({})", device, pcap_statustostr(status), cp);
         } else {
-            logger::errorln("%s: %s", device, pcap_statustostr(status));
+            LOG(ERROR) << std::format("{}: {}", device, pcap_statustostr(status));
         }
     }
 
@@ -114,7 +117,7 @@ pcap_t* open_interface(const char* device, char* ebuf)
         char errbuf[PCAP_ERRBUF_SIZE];
 
         if (pcap_setnonblock(pc, 1, errbuf) != 0) {
-            logger::errorln("%s: %s", device, errbuf);
+            LOG(ERROR) << std::format("{}: {}", device, errbuf);
         }
     }
 

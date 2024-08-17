@@ -6,9 +6,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(QT_VERSION 6.7.2)
-# CMAKE_PREFIX_PATH 效果一致，但会出现一些警告
-set(Qt6_DIR $ENV{HOME}/Qt6/${QT_VERSION}/macos/lib/cmake/Qt6)
+# 无法自动加载时，设置 QT 目录
+#set(Qt6_DIR $ENV{HOME}/Qt6/6.7.2/macos/lib/cmake/Qt6)
 
 project(WireDolphin VERSION 0.1.0 LANGUAGES CXX)
 
@@ -23,7 +22,6 @@ add_executable(${PROJECT_NAME}
         include/dissectors/ipv4.h
         include/dissectors/ipv6.h
         include/dissectors/ethernet.h
-        include/logger.h
         src/packet/packetsource.cpp
         src/utils/utils.cpp
         src/packet/packet.cpp
@@ -32,7 +30,6 @@ add_executable(${PROJECT_NAME}
         src/interface.cpp
         src/dissectors/ipv4.cpp
         src/dissectors/ipv6.cpp
-        src/logger/logger.cpp
         src/dissectors/tcp.cpp
         include/dissectors/tcp.h
         include/dissectors/arp.h
@@ -44,11 +41,20 @@ add_executable(${PROJECT_NAME}
         include/statswindow.h
         src/window/stats/statswindow.cpp
         src/window/stats/statswindow.ui
+        src/qcustomplot.cpp
+        include/qcustomplot.h
 )
 
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_definitions(-DDEBUG_BUILD)
+endif ()
+
 # qt core
-find_package(Qt6 COMPONENTS Core Gui Widgets Charts REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core Qt::Gui Qt::Charts Qt::Widgets)
+find_package(Qt6 COMPONENTS Core Gui Widgets Charts PrintSupport REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core Qt::Gui Qt::Charts Qt::Widgets Qt::PrintSupport)
+# glog
+find_package(glog CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE glog::glog)
 
 # libpcap
 find_package(PkgConfig REQUIRED)
@@ -73,9 +79,13 @@ install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-set(CMAKE_AUTORCC ON)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.icns"
         "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/icon.icns"
+)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+        "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/logs"
 )
