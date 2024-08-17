@@ -6,9 +6,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(QT_VERSION 6.7.2)
-# CMAKE_PREFIX_PATH 效果一致，但会出现一些警告
-set(Qt6_DIR $ENV{HOME}/Qt6/${QT_VERSION}/macos/lib/cmake/Qt6)
+# 无法自动加载时，设置 QT 目录
+#set(Qt6_DIR $ENV{HOME}/Qt6/6.7.2/macos/lib/cmake/Qt6)
 
 project(WireDolphin VERSION 0.1.0 LANGUAGES CXX)
 
@@ -42,6 +41,8 @@ add_executable(${PROJECT_NAME}
         include/statswindow.h
         src/window/stats/statswindow.cpp
         src/window/stats/statswindow.ui
+        src/qcustomplot.cpp
+        include/qcustomplot.h
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -49,9 +50,8 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif ()
 
 # qt core
-find_package(Qt6 COMPONENTS Core Gui Widgets Charts REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core Qt::Gui Qt::Charts Qt::Widgets)
-
+find_package(Qt6 COMPONENTS Core Gui Widgets Charts PrintSupport REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core Qt::Gui Qt::Charts Qt::Widgets Qt::PrintSupport)
 # glog
 find_package(glog CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE glog::glog)
