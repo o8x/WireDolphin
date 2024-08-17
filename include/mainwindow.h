@@ -44,6 +44,9 @@ public:
     void initWidgets();
     void updateCaptureStatusLabel() const;
     void initInterfaceList();
+    void about();
+    void activateStatsWindow() const;
+    void initMenus();
 
 private:
     Ui::MainWindow* ui;
@@ -62,4 +65,11 @@ private:
     QMenu* hexTableMenu = nullptr;
     QSystemTrayIcon* systemTrayIcon = nullptr;
     StatsWindow* statsWindow = nullptr;
+    QMenu* fileMenu = nullptr;
+    QMenu* helpMenu = nullptr;
+    QMenu* windowMenu = nullptr;
+    QAction* loadFileAct = nullptr;
+    QAction* aboutAct = nullptr;
+    QAction* statsAct = nullptr;
+    QAction* aboutQtAct = nullptr;
 };

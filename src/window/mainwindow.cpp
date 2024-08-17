@@ -1,15 +1,16 @@
-#include <QFileDialog>
-#include <QMenu>
-#include <QMessageBox>
-#include <QScrollBar>
-#include <iostream>
-
-#include "interface.h"
 #include "mainwindow.h"
+#include "interface.h"
 #include "packetsource.h"
 #include "ui_MainWindow.h"
 #include "utils.h"
+
+#include <QFileDialog>
+#include <QMenu>
+#include <QMessageBox>
 #include <QSystemTrayIcon>
+#include <iostream>
+
+using namespace Qt::StringLiterals;
 
 using namespace std;
 
@@ -40,6 +41,7 @@ MainWindow::MainWindow(QWidget* parent)
     systemTrayIcon = new QSystemTrayIcon();
     statsWindow = new StatsWindow();
 
+    initMenus();
     initWindow();
     initWidgets();
     initInterfaceList();
@@ -64,9 +66,7 @@ void MainWindow::initWindow()
     menu.addActions({ stats, quit });
     systemTrayIcon->setContextMenu(&menu);
 
-    connect(stats, &QAction::triggered, this, [this]() {
-        statsWindow->show();
-    });
+    connect(stats, &QAction::triggered, this, &MainWindow::activateStatsWindow);
 
     connect(quit, &QAction::triggered, this, [this]() {
         exit(0);
@@ -94,6 +94,14 @@ MainWindow::~MainWindow()
     delete applicationTree;
     delete hexTableMenu;
     delete systemTrayIcon;
+    delete statsWindow;
+    delete fileMenu;
+    delete helpMenu;
+    delete windowMenu;
+    delete statsAct;
+    delete loadFileAct;
+    delete aboutAct;
+    delete aboutQtAct;
 }
 
 void MainWindow::changeInterfaceIndex(int index) const
@@ -624,4 +632,53 @@ void MainWindow::initInterfaceList()
 
         dev = dev->next;
     }
+}
+
+void MainWindow::about()
+{
+    QMessageBox::about(this, "About WireDolphin", "a Simple Wireshark For learning C++ and QT");
+}
+
+void MainWindow::activateStatsWindow() const
+{
+    // 确保窗口显示
+    statsWindow->show();
+    // 提升窗口显示层级到顶层
+    statsWindow->raise();
+    // 获得焦点
+    statsWindow->activateWindow();
+}
+
+void MainWindow::initMenus()
+{
+    // 加载本地 pcap 文件，该功能可以调用，但会立即崩溃
+    loadFileAct = new QAction(tr("&Load offline .pcap"), this);
+    loadFileAct->setShortcuts(QKeySequence::Open);
+    connect(loadFileAct, &QAction::triggered, this, &MainWindow::loadOfflineFile);
+
+    // 打开统计视图
+    statsAct = new QAction(tr("&Statistics"), this);
+    connect(statsAct, &QAction::triggered, this, &MainWindow::activateStatsWindow);
+
+    // 两个 About
+    aboutAct = new QAction(tr("&About"), this);
+    connect(aboutAct, &QAction::triggered, this, &MainWindow::about);
+    aboutQtAct = new QAction(tr("About &Qt"), this);
+    connect(aboutQtAct, &QAction::triggered, QApplication::aboutQt);
+
+    // 文件菜单
+    // 如果 Action 在默认菜单列已经实现，则不会显示该 Action
+    fileMenu = new QMenu(tr("&File"), this);
+    fileMenu->addAction(loadFileAct);
+
+    // Help 在 Mac 下会被合并到默认菜单列
+    helpMenu = new QMenu(tr("&Help"), this);
+    helpMenu->addAction(aboutAct);
+    helpMenu->addAction(aboutQtAct);
+
+    windowMenu = new QMenu(tr("&Window"), this);
+    windowMenu->addAction(statsAct);
+
+    menuBar()->addMenu(fileMenu);
+    menuBar()->addMenu(windowMenu);
 }
