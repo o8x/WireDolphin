@@ -36,7 +36,7 @@ public:
     void captureInterfaceStarted(string name, string message);
     void captureInterfaceStopped(string name, string message) const;
     void resetCapture();
-    void acceptPacket(int index) const;
+    void acceptPacket(int index, Packet* p) const;
     void initSlots();
     void loadOfflineFile() const;
     void tableItemClicked(const QModelIndex& index);
@@ -51,7 +51,7 @@ public:
 private:
     Ui::MainWindow* ui;
     pcap_if_t* allDevs = nullptr;
-    PacketSource* packetHandler;
+    PacketSource* packetSource;
     vector<Packet*> packets;
     bool captureStart = false;
     QLabel* interfaceStatusLabel = new QLabel("", this);

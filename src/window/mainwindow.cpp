@@ -8,6 +8,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QSystemTrayIcon>
+#include <glog/logging.h>
 #include <iostream>
 
 using namespace Qt::StringLiterals;
@@ -37,9 +38,11 @@ MainWindow::MainWindow(QWidget* parent)
     ui->setupUi(this);
 
     packets = vector<Packet*>();
-    packetHandler = new PacketSource(this, &packets);
+    packetSource = new PacketSource(this, &packets);
     systemTrayIcon = new QSystemTrayIcon();
     statsWindow = new StatsWindow();
+    statsWindow->packetSource = packetSource;
+    statsWindow->initGraph();
 
     initMenus();
     initWindow();
@@ -79,13 +82,13 @@ void MainWindow::initWindow()
 
 MainWindow::~MainWindow()
 {
-    packetHandler->free();
+    packetSource->free();
     pcap_freealldevs(allDevs);
     freePackets();
 
     delete ui;
     delete interfaceStatusLabel;
-    delete packetHandler;
+    delete packetSource;
     delete captureStatusLabel;
     delete frame;
     delete datalinkTree;
@@ -178,16 +181,16 @@ void MainWindow::toggleStartBtn()
             return;
         }
 
-        packetHandler->init(device, interface);
-        packetHandler->start();
+        packetSource->init(device, interface);
+        packetSource->start();
 
         return;
     }
 
-    print_stat_info(packetHandler->get_interface(), packets.size(), time_start);
+    print_stat_info(packetSource->get_interface(), packets.size(), time_start);
 
-    packetHandler->free();
-    packetHandler->wait();
+    packetSource->free();
+    packetSource->wait();
 }
 
 void MainWindow::initWidgets()
@@ -280,7 +283,7 @@ void MainWindow::updateCaptureStatusLabel() const
     captureStatusLabel->setText("packets: " + QString::number(size) + "/" + QString::number(packets.size()));
 }
 
-void MainWindow::acceptPacket(const int index) const
+void MainWindow::acceptPacket(const int index, Packet*) const
 {
     auto packet = packets[index];
 
@@ -331,9 +334,9 @@ void MainWindow::initSlots()
     connect(ui->resetBtn, &QPushButton::clicked, this, &MainWindow::resetCapture);
     connect(ui->startBtn, &QPushButton::clicked, this, &MainWindow::toggleStartBtn);
     connect(ui->interfaceList, &QComboBox::currentIndexChanged, this, &MainWindow::changeInterfaceIndex);
-    connect(packetHandler, &PacketSource::listen_started, this, &MainWindow::captureInterfaceStarted);
-    connect(packetHandler, &PacketSource::listen_stopped, this, &MainWindow::captureInterfaceStopped);
-    connect(packetHandler, &PacketSource::packet_pushed, this, &MainWindow::acceptPacket);
+    connect(packetSource, &PacketSource::listen_started, this, &MainWindow::captureInterfaceStarted);
+    connect(packetSource, &PacketSource::listen_stopped, this, &MainWindow::captureInterfaceStopped);
+    connect(packetSource, &PacketSource::captured, this, &MainWindow::acceptPacket);
     connect(ui->packetsTable, &QTableWidget::clicked, this, &MainWindow::tableItemClicked);
     connect(ui->loadFileBtn, &QPushButton::clicked, this, &MainWindow::loadOfflineFile);
 }
@@ -355,9 +358,9 @@ void MainWindow::loadOfflineFile() const
         return;
     }
 
-    packetHandler->set_filename(filename.toStdString());
-    packetHandler->init(nullptr, interface);
-    packetHandler->start();
+    packetSource->set_filename(filename.toStdString());
+    packetSource->init(nullptr, interface);
+    packetSource->start();
 }
 
 void MainWindow::tableItemClicked(const QModelIndex& index)
@@ -630,6 +633,7 @@ void MainWindow::initInterfaceList()
             break;
         }
 
+        LOG(INFO) << std::format("lookup dev: {}", dev->name);
         dev = dev->next;
     }
 }

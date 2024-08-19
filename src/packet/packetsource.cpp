@@ -77,7 +77,7 @@ void PacketSource::run()
 
         packetsPtr->push_back(p);
         // 如果并发，会有线程安全问题，size 不准
-        emit this->packet_pushed(packetsPtr->size() - 1);
+        emit this->captured(packetsPtr->size() - 1, p);
     }
 
     emit this->listen_stopped(name, "off");

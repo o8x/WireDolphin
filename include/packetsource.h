@@ -18,7 +18,7 @@ class PacketSource final : public QThread {
 signals:
     void listen_started(std::string name, std::string message) const;
     void listen_stopped(std::string name, std::string message) const;
-    void packet_pushed(size_t);
+    void captured(size_t, Packet*);
 
 public:
     explicit PacketSource(QObject* parent = nullptr, vector<Packet*>* packets = nullptr)

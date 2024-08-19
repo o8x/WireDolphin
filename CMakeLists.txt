@@ -43,6 +43,8 @@ add_executable(${PROJECT_NAME}
         src/window/stats/statswindow.ui
         src/qcustomplot.cpp
         include/qcustomplot.h
+        src/axistag.cpp
+        include/axistag.h
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
