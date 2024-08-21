@@ -228,6 +228,11 @@
               </column>
              </widget>
              <widget class="QTabWidget" name="tabWidget">
+              <property name="styleSheet">
+               <string notr="true">QTabWidget::pane {
+	border:none;
+}</string>
+              </property>
               <property name="currentIndex">
                <number>0</number>
               </property>
