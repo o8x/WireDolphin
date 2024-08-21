@@ -22,6 +22,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - 表格组件性能问题（目前200M左右带宽界面会无响应）
 - 跨平台支持（WinPcap）
 
+## [v0.2.0] - 2024-08-21
+
+### Added
+
+- 自动维护核心配置文件
+- 自动记录和恢复主窗口位置、大小
+- 基本的 MenuBar 用于展示统计视图
+- 接入 glog 日志库
+- 编译 release 时自动对 .app 文件签名
+
 ## [v0.1.0] - 2024-08-13
 
 ### Added
