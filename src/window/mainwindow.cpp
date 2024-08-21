@@ -1,15 +1,19 @@
-#include <QFileDialog>
-#include <QMenu>
-#include <QMessageBox>
-#include <QScrollBar>
-#include <iostream>
-
-#include "interface.h"
 #include "mainwindow.h"
+
+#include "conf.h"
+#include "interface.h"
 #include "packetsource.h"
 #include "ui_MainWindow.h"
 #include "utils.h"
+
+#include <QFileDialog>
+#include <QMenu>
+#include <QMessageBox>
 #include <QSystemTrayIcon>
+#include <glog/logging.h>
+#include <iostream>
+
+using namespace Qt::StringLiterals;
 
 using namespace std;
 
@@ -28,6 +32,26 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
     hide();
 }
+bool MainWindow::event(QEvent* event)
+{
+    if (event->type() == QEvent::Move) {
+        auto winConf = conf::instance().core()->FirstChildElement("Window");
+        winConf->FirstChildElement("PosX")->SetText(this->geometry().x());
+        winConf->FirstChildElement("PosY")->SetText(this->geometry().y());
+
+        conf::instance().update_core();
+    }
+
+    if (event->type() == QEvent::Resize) {
+        auto winConf = conf::instance().core()->FirstChildElement("Window");
+        winConf->FirstChildElement("Width")->SetText(this->geometry().size().width());
+        winConf->FirstChildElement("Height")->SetText(this->geometry().size().height());
+
+        conf::instance().update_core();
+    }
+
+    return QMainWindow::event(event);
+}
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -36,10 +60,12 @@ MainWindow::MainWindow(QWidget* parent)
     ui->setupUi(this);
 
     packets = vector<Packet*>();
-    packetHandler = new PacketSource(this, &packets);
-    systemTrayIcon = new QSystemTrayIcon();
+    packetSource = new PacketSource(this, &packets);
     statsWindow = new StatsWindow();
+    statsWindow->packetSource = packetSource;
+    statsWindow->initGraph();
 
+    initMenus();
     initWindow();
     initWidgets();
     initInterfaceList();
@@ -48,44 +74,26 @@ MainWindow::MainWindow(QWidget* parent)
 
 void MainWindow::initWindow()
 {
+
+    QSystemTrayIcon* tray = new QSystemTrayIcon();
+    tray->setToolTip("WireDolphin");
+
     QIcon icon;
     icon.addPixmap(QWidget().style()->standardIcon(QStyle::SP_DriveNetIcon).pixmap(QSize(16, 16)));
+    tray->setIcon(icon);
 
-    systemTrayIcon->setIcon(icon);
-    systemTrayIcon->setToolTip("WireDolphin");
-    systemTrayIcon->show();
-
-    // 系统通知
-    systemTrayIcon->showMessage("title", "message", QSystemTrayIcon::MessageIcon::Information, 3000);
-
-    QMenu menu;
-    QAction* stats = new QAction("Stats");
-    QAction* quit = new QAction("Exit");
-    menu.addActions({ stats, quit });
-    systemTrayIcon->setContextMenu(&menu);
-
-    connect(stats, &QAction::triggered, this, [this]() {
-        statsWindow->show();
-    });
-
-    connect(quit, &QAction::triggered, this, [this]() {
-        exit(0);
-    });
-
-    connect(systemTrayIcon, &QSystemTrayIcon::activated, this, [this]() {
-        show();
-    });
+    trayIcon = new TrayIcon(tray, statsWindow);
 }
 
 MainWindow::~MainWindow()
 {
-    packetHandler->free();
+    packetSource->free();
     pcap_freealldevs(allDevs);
     freePackets();
 
     delete ui;
     delete interfaceStatusLabel;
-    delete packetHandler;
+    delete packetSource;
     delete captureStatusLabel;
     delete frame;
     delete datalinkTree;
@@ -93,7 +101,15 @@ MainWindow::~MainWindow()
     delete transportTree;
     delete applicationTree;
     delete hexTableMenu;
-    delete systemTrayIcon;
+    delete trayIcon;
+    delete statsWindow;
+    delete fileMenu;
+    delete helpMenu;
+    delete windowMenu;
+    delete statsAct;
+    delete loadFileAct;
+    delete aboutAct;
+    delete aboutQtAct;
 }
 
 void MainWindow::changeInterfaceIndex(int index) const
@@ -170,16 +186,16 @@ void MainWindow::toggleStartBtn()
             return;
         }
 
-        packetHandler->init(device, interface);
-        packetHandler->start();
+        packetSource->init(device, interface);
+        packetSource->start();
 
         return;
     }
 
-    print_stat_info(packetHandler->get_interface(), packets.size(), time_start);
+    print_stat_info(packetSource->get_interface(), packets.size(), time_start);
 
-    packetHandler->free();
-    packetHandler->wait();
+    packetSource->free();
+    packetSource->wait();
 }
 
 void MainWindow::initWidgets()
@@ -272,7 +288,7 @@ void MainWindow::updateCaptureStatusLabel() const
     captureStatusLabel->setText("packets: " + QString::number(size) + "/" + QString::number(packets.size()));
 }
 
-void MainWindow::acceptPacket(const int index) const
+void MainWindow::acceptPacket(const int index, Packet*) const
 {
     auto packet = packets[index];
 
@@ -323,9 +339,9 @@ void MainWindow::initSlots()
     connect(ui->resetBtn, &QPushButton::clicked, this, &MainWindow::resetCapture);
     connect(ui->startBtn, &QPushButton::clicked, this, &MainWindow::toggleStartBtn);
     connect(ui->interfaceList, &QComboBox::currentIndexChanged, this, &MainWindow::changeInterfaceIndex);
-    connect(packetHandler, &PacketSource::listen_started, this, &MainWindow::captureInterfaceStarted);
-    connect(packetHandler, &PacketSource::listen_stopped, this, &MainWindow::captureInterfaceStopped);
-    connect(packetHandler, &PacketSource::packet_pushed, this, &MainWindow::acceptPacket);
+    connect(packetSource, &PacketSource::listen_started, this, &MainWindow::captureInterfaceStarted);
+    connect(packetSource, &PacketSource::listen_stopped, this, &MainWindow::captureInterfaceStopped);
+    connect(packetSource, &PacketSource::captured, this, &MainWindow::acceptPacket);
     connect(ui->packetsTable, &QTableWidget::clicked, this, &MainWindow::tableItemClicked);
     connect(ui->loadFileBtn, &QPushButton::clicked, this, &MainWindow::loadOfflineFile);
 }
@@ -347,9 +363,9 @@ void MainWindow::loadOfflineFile() const
         return;
     }
 
-    packetHandler->set_filename(filename.toStdString());
-    packetHandler->init(nullptr, interface);
-    packetHandler->start();
+    packetSource->set_filename(filename.toStdString());
+    packetSource->init(nullptr, interface);
+    packetSource->start();
 }
 
 void MainWindow::tableItemClicked(const QModelIndex& index)
@@ -622,6 +638,56 @@ void MainWindow::initInterfaceList()
             break;
         }
 
+        LOG(INFO) << std::format("lookup dev: {}", dev->name);
         dev = dev->next;
     }
+}
+
+void MainWindow::about()
+{
+    QMessageBox::about(this, "About WireDolphin", "a Simple Wireshark For learning C++ and QT");
+}
+
+void MainWindow::activateStatsWindow() const
+{
+    // 确保窗口显示
+    statsWindow->show();
+    // 提升窗口显示层级到顶层
+    statsWindow->raise();
+    // 获得焦点
+    statsWindow->activateWindow();
+}
+
+void MainWindow::initMenus()
+{
+    // 加载本地 pcap 文件，该功能可以调用，但会立即崩溃
+    loadFileAct = new QAction(tr("&Load offline .pcap"), this);
+    loadFileAct->setShortcuts(QKeySequence::Open);
+    connect(loadFileAct, &QAction::triggered, this, &MainWindow::loadOfflineFile);
+
+    // 打开统计视图
+    statsAct = new QAction(tr("&Statistics"), this);
+    connect(statsAct, &QAction::triggered, this, &MainWindow::activateStatsWindow);
+
+    // 两个 About
+    aboutAct = new QAction(tr("&About"), this);
+    connect(aboutAct, &QAction::triggered, this, &MainWindow::about);
+    aboutQtAct = new QAction(tr("About &Qt"), this);
+    connect(aboutQtAct, &QAction::triggered, QApplication::aboutQt);
+
+    // 文件菜单
+    // 如果 Action 在默认菜单列已经实现，则不会显示该 Action
+    fileMenu = new QMenu(tr("&File"), this);
+    fileMenu->addAction(loadFileAct);
+
+    // Help 在 Mac 下会被合并到默认菜单列
+    helpMenu = new QMenu(tr("&Help"), this);
+    helpMenu->addAction(aboutAct);
+    helpMenu->addAction(aboutQtAct);
+
+    windowMenu = new QMenu(tr("&Window"), this);
+    windowMenu->addAction(statsAct);
+
+    menuBar()->addMenu(fileMenu);
+    menuBar()->addMenu(windowMenu);
 }

@@ -1,12 +1,16 @@
+#include "conf.h"
+
 #include <QApplication>
-#include <QMenu>
-#include <QSystemTrayIcon>
+#include <fstream>
 #include <glog/logging.h>
 #include <iostream>
 #include <mainwindow.h>
+#include <unistd.h>
 
 void initGlog(const char* argv0)
 {
+    auto baseDir = conf::instance().core()->FirstChildElement("Logger")->FirstChildElement("BaseDir");
+
     google::InitGoogleLogging(argv0);
     FLAGS_minloglevel = google::INFO;
     FLAGS_timestamp_in_logfile_name = false;
@@ -14,7 +18,11 @@ void initGlog(const char* argv0)
     FLAGS_logbufsecs = 15;
     FLAGS_logbuflevel = google::INFO;
     FLAGS_log_utc_time = true;
-    FLAGS_log_dir = "../logs";
+    if (baseDir == nullptr) {
+        FLAGS_log_dir = baseDir->Value();
+    } else {
+        FLAGS_log_dir = "../logs";
+    }
 
 #ifdef DEBUG_BUILD
     FLAGS_logtostderr = true;
@@ -28,23 +36,30 @@ void initGlog(const char* argv0)
 
 int main(int argc, char* argv[])
 {
-    initGlog(argv[0]);
     QApplication a(argc, argv);
 
     try {
+        if (!conf::instance().check_core_config()) {
+            throw runtime_error(std::format("Core Profile is corrupt, Repair or remove \"{}\".", conf::core_config_name()));
+        }
 
-        MainWindow w;
+        initGlog(argv[0]);
+
+        MainWindow window;
+        auto winConf = conf::instance().core()->FirstChildElement("Window");
+
         // QT 似乎无法实现 titlebar hidden inset 的效果，只能完全隐藏边框
         // w.setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+        window.resize(winConf->FirstChildElement("Width")->IntText(), winConf->FirstChildElement("Height")->IntText());
+        window.move(winConf->FirstChildElement("PosX")->IntText(), winConf->FirstChildElement("PosY")->IntText());
         // 在 Mac 下合并标题和工具栏
-        w.move(50, 50);
-        w.setUnifiedTitleAndToolBarOnMac(true);
-        w.setWindowTitle("🐬 WireDolphin");
-        w.show();
+        window.setUnifiedTitleAndToolBarOnMac(true);
+        window.setWindowTitle("🐬 WireDolphin");
+        window.show();
 
         return QApplication::exec();
-    } catch (std::exception& e) {
-        std::cerr << e.what() << std::endl;
+    } catch (const std::runtime_error& e) {
+        QMessageBox::warning(nullptr, "FATAL ERROR",e.what());
     }
 
     return 1;

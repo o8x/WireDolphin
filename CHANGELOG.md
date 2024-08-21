@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+- 统计视图（初步建设已完成，暂时搁置）
 - OOP with PImpl 改造
 - ICMP 解析
 - DNS 解析
