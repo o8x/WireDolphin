@@ -47,6 +47,8 @@ add_executable(${PROJECT_NAME}
         include/axistag.h
         include/trayicon.h
         src/trayicon.cpp
+        include/conf.h
+        src/conf.cpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -62,7 +64,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE glog::glog)
 
 # libpcap
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(VCPKG_DEPS REQUIRED libpcap)
+pkg_check_modules(VCPKG_DEPS REQUIRED libpcap tinyxml2)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${VCPKG_DEPS_LIBRARIES})
 target_link_directories(${PROJECT_NAME} PRIVATE ${VCPKG_DEPS_LIBRARY_DIRS})
 target_include_directories(${PROJECT_NAME} PRIVATE ${VCPKG_DEPS_INCLUDE_DIRS})
