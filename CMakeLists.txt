@@ -45,6 +45,8 @@ add_executable(${PROJECT_NAME}
         include/qcustomplot.h
         src/axistag.cpp
         include/axistag.h
+        include/trayicon.h
+        src/trayicon.cpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

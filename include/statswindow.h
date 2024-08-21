@@ -28,6 +28,9 @@ public:
     void acceptPacket(const int index, const Packet* packet);
     PacketSource* packetSource;
 
+protected:
+    bool event(QEvent* event) override;
+
 private:
     Ui::stats* ui;
     int packetNum;

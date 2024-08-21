@@ -39,7 +39,6 @@ MainWindow::MainWindow(QWidget* parent)
 
     packets = vector<Packet*>();
     packetSource = new PacketSource(this, &packets);
-    systemTrayIcon = new QSystemTrayIcon();
     statsWindow = new StatsWindow();
     statsWindow->packetSource = packetSource;
     statsWindow->initGraph();
@@ -53,31 +52,15 @@ MainWindow::MainWindow(QWidget* parent)
 
 void MainWindow::initWindow()
 {
+
+    QSystemTrayIcon* tray = new QSystemTrayIcon();
+    tray->setToolTip("WireDolphin");
+
     QIcon icon;
     icon.addPixmap(QWidget().style()->standardIcon(QStyle::SP_DriveNetIcon).pixmap(QSize(16, 16)));
+    tray->setIcon(icon);
 
-    systemTrayIcon->setIcon(icon);
-    systemTrayIcon->setToolTip("WireDolphin");
-    systemTrayIcon->show();
-
-    // 系统通知
-    systemTrayIcon->showMessage("title", "message", QSystemTrayIcon::MessageIcon::Information, 3000);
-
-    QMenu menu;
-    QAction* stats = new QAction("Stats");
-    QAction* quit = new QAction("Exit");
-    menu.addActions({ stats, quit });
-    systemTrayIcon->setContextMenu(&menu);
-
-    connect(stats, &QAction::triggered, this, &MainWindow::activateStatsWindow);
-
-    connect(quit, &QAction::triggered, this, [this]() {
-        exit(0);
-    });
-
-    connect(systemTrayIcon, &QSystemTrayIcon::activated, this, [this]() {
-        show();
-    });
+    trayIcon = new TrayIcon(tray, statsWindow);
 }
 
 MainWindow::~MainWindow()
@@ -96,7 +79,7 @@ MainWindow::~MainWindow()
     delete transportTree;
     delete applicationTree;
     delete hexTableMenu;
-    delete systemTrayIcon;
+    delete trayIcon;
     delete statsWindow;
     delete fileMenu;
     delete helpMenu;

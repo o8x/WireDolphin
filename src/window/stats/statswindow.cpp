@@ -38,8 +38,9 @@ void StatsWindow::initGraph()
     mTag2 = new AxisTag(mGraph2->valueAxis());
     mTag2->setPen(mGraph2->pen());
 
-    // connect(&mDataTimer, &QTimer::timeout, this, &StatsWindow::timerSlot);
-    // mDataTimer.start(500);
+    this->resize(450, 700);
+
+    connect(&mDataTimer, &QTimer::timeout, this, &StatsWindow::timerSlot);
 }
 
 StatsWindow::~StatsWindow()
@@ -76,4 +77,20 @@ void StatsWindow::acceptPacket(const int index, const Packet* packet)
     if (packet->get_type() == "TCP" || packet->get_type() == "TCP6") {
         tcpPacketNum++;
     }
+}
+
+bool StatsWindow::event(QEvent* event)
+{
+    // 失去焦点时，隐藏窗体。
+    // QEvent::Leave 可以实现类似的效果，但只要鼠标从窗体中出去，就会立即隐藏
+    if (event->type() == QEvent::WindowDeactivate) {
+        mDataTimer.stop();
+        hide();
+    }
+
+    if (event->type() == QEvent::WindowActivate) {
+        mDataTimer.start(1000);
+    }
+
+    return QWidget::event(event);
 }

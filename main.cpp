@@ -1,6 +1,4 @@
 #include <QApplication>
-#include <QMenu>
-#include <QSystemTrayIcon>
 #include <glog/logging.h>
 #include <iostream>
 #include <mainwindow.h>
