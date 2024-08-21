@@ -27,6 +27,7 @@ class MainWindow : public QMainWindow {
 
 protected:
     void closeEvent(QCloseEvent* event) override;
+    bool event(QEvent* event) override;
 
 public:
     void initWindow();

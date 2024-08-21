@@ -1,4 +1,6 @@
 #include "mainwindow.h"
+
+#include "conf.h"
 #include "interface.h"
 #include "packetsource.h"
 #include "ui_MainWindow.h"
@@ -29,6 +31,26 @@ void MainWindow::closeEvent(QCloseEvent* event)
     event->ignore();
 
     hide();
+}
+bool MainWindow::event(QEvent* event)
+{
+    if (event->type() == QEvent::Move) {
+        auto winConf = conf::instance().core()->FirstChildElement("Window");
+        winConf->FirstChildElement("PosX")->SetText(this->geometry().x());
+        winConf->FirstChildElement("PosY")->SetText(this->geometry().y());
+
+        conf::instance().update_core();
+    }
+
+    if (event->type() == QEvent::Resize) {
+        auto winConf = conf::instance().core()->FirstChildElement("Window");
+        winConf->FirstChildElement("Width")->SetText(this->geometry().size().width());
+        winConf->FirstChildElement("Height")->SetText(this->geometry().size().height());
+
+        conf::instance().update_core();
+    }
+
+    return QMainWindow::event(event);
 }
 
 MainWindow::MainWindow(QWidget* parent)
