@@ -107,6 +107,8 @@ MainWindow::~MainWindow()
     delete helpMenu;
     delete windowMenu;
     delete statsAct;
+    delete saveAct;
+    delete dumpFilename;
     delete loadFileAct;
     delete aboutAct;
     delete aboutQtAct;
@@ -133,9 +135,13 @@ void MainWindow::freePackets()
     vector<Packet*>().swap(packets);
 }
 
-void MainWindow::captureInterfaceStarted(string name, string message)
+void MainWindow::captureInterfaceStarted(packetsource_state state)
 {
     freePackets();
+
+    if (!state.dump_filename.empty()) {
+        dumpFilename->setText(state.dump_filename.c_str());
+    }
 
     time_start = std::chrono::high_resolution_clock::now();
     ui->interfaceList->setDisabled(true);
@@ -148,16 +154,16 @@ void MainWindow::captureInterfaceStarted(string name, string message)
     ui->hexTable->setRowCount(0);
 
     ui->layerTree->clear();
-    interfaceStatusLabel->setText(name.append(": ").append(message).c_str());
+    interfaceStatusLabel->setText(state.interface_name.append(": ").append(state.state).c_str());
     updateCaptureStatusLabel();
 }
 
-void MainWindow::captureInterfaceStopped(string name, string message) const
+void MainWindow::captureInterfaceStopped(packetsource_state state) const
 {
     ui->interfaceList->setDisabled(false);
     ui->resetBtn->setDisabled(true);
     ui->startBtn->setText("Start");
-    interfaceStatusLabel->setText(name.append(": ").append(message).c_str());
+    interfaceStatusLabel->setText(state.interface_name.append(": ").append(state.state).c_str());
 
     updateCaptureStatusLabel();
 }
@@ -658,12 +664,37 @@ void MainWindow::activateStatsWindow() const
     statsWindow->activateWindow();
 }
 
+void MainWindow::saveAsPcap()
+{
+    if (packetSource->get_dump_filename().empty()) {
+        QMessageBox::warning(this, "", "no dump file");
+        return;
+    }
+
+    string basedir = QStandardPaths::standardLocations(QStandardPaths::DocumentsLocation)[0]
+                         .toStdString();
+
+    QString fileName = QFileDialog::getSaveFileName(this, "Save document", basedir.c_str(), "*.pcap");
+    if (!fileName.isEmpty()) {
+        std::filesystem::rename(packetSource->get_dump_filename(), fileName.toStdString());
+        trayIcon->showMessage("INFO", std::format("Save complete: {}", fileName.toStdString()));
+    }
+}
+
 void MainWindow::initMenus()
 {
     // 加载本地 pcap 文件，该功能可以调用，但会立即崩溃
     loadFileAct = new QAction(tr("&Load offline .pcap"), this);
     loadFileAct->setShortcuts(QKeySequence::Open);
     connect(loadFileAct, &QAction::triggered, this, &MainWindow::loadOfflineFile);
+
+    // 本质上就是把捕获的 pcap 文件移动到新路径
+    saveAct = new QAction(tr("&Dump File"), this);
+    saveAct->setShortcuts(QKeySequence::SaveAs);
+    connect(saveAct, &QAction::triggered, this, &MainWindow::saveAsPcap);
+
+    dumpFilename = new QAction("Wait Start.", this);
+    dumpFilename->setDisabled(true);
 
     // 打开统计视图
     statsAct = new QAction(tr("&Statistics"), this);
@@ -679,6 +710,10 @@ void MainWindow::initMenus()
     // 如果 Action 在默认菜单列已经实现，则不会显示该 Action
     fileMenu = new QMenu(tr("&File"), this);
     fileMenu->addAction(loadFileAct);
+    fileMenu->addAction(saveAct);
+    fileMenu->addAction(saveAct);
+    fileMenu->addSeparator();
+    fileMenu->addAction(dumpFilename);
 
     // Help 在 Mac 下会被合并到默认菜单列
     helpMenu = new QMenu(tr("&Help"), this);

@@ -9,15 +9,67 @@
 #include "utils.h"
 #include <QDebug>
 #include <QtCore/qcoreapplication.h>
+#include <__filesystem/operations.h>
+#include <glog/logging.h>
 #include <iostream>
 
 using namespace std;
+
+PacketSource::~PacketSource()
+{
+    free();
+    clean_last_dump();
+}
+
+void PacketSource::clean_last_dump()
+{
+    if (this->dump_filename.empty()) {
+        return;
+    }
+
+    std::filesystem::remove(this->dump_filename);
+    LOG(INFO) << std::format("remove {}", this->dump_filename);
+    this->dump_filename = "";
+}
 
 void PacketSource::init(pcap_if_t* device, pcap_t* interface)
 {
     this->device = device;
     this->interface = interface;
     this->running = true;
+
+    clean_last_dump();
+    if (device != nullptr) {
+        dump_filename = std::format("/tmp/{}.{}.pcap", device->name, std::time(0));
+    } else {
+        dump_filename = std::format("/tmp/{}.pcap", std::time(0));
+    }
+
+    LOG(INFO) << std::format("open dump handler, filename: {}", dump_filename);
+    this->dump_handler = pcap_dump_open(interface, dump_filename.c_str());
+}
+
+void PacketSource::free()
+{
+    this->running = false;
+
+    if (this->interface != nullptr) {
+        pcap_close(this->interface);
+        this->interface = nullptr;
+    }
+
+    if (this->device != nullptr) {
+        this->device = nullptr;
+    }
+
+    if (this->dump_handler != nullptr) {
+        pcap_dump_close(this->dump_handler);
+        this->dump_handler = nullptr;
+    }
+}
+string PacketSource::get_dump_filename() const
+{
+    return dump_filename;
 }
 
 string PacketSource::get_filename() const
@@ -35,25 +87,14 @@ pcap_t* PacketSource::get_interface() const
     return interface;
 }
 
-void PacketSource::free()
-{
-    this->running = false;
-
-    if (this->interface != nullptr) {
-        pcap_close(this->interface);
-        this->interface = nullptr;
-    }
-
-    if (this->device != nullptr) {
-        this->device = nullptr;
-    }
-}
-
 void PacketSource::run()
 {
     const string name = this->device ? this->device->name : this->filename;
 
-    emit listen_started(name, "on");
+    emit listen_started({ .dump_filename = dump_filename,
+        .interface_name = name,
+        .state = "on" });
+
     while (true) {
         if (!running || this->interface == nullptr) {
             break;
@@ -76,11 +117,24 @@ void PacketSource::run()
         p->set_payload(&pkt_data);
 
         packetsPtr->push_back(p);
+        dump_flush(pkt_header, pkt_data);
         // 如果并发，会有线程安全问题，size 不准
         emit this->captured(packetsPtr->size() - 1, p);
     }
 
-    emit this->listen_stopped(name, "off");
+    emit listen_started({ .dump_filename = dump_filename,
+        .interface_name = name,
+        .state = "off" });
+}
+
+void PacketSource::dump_flush(const pcap_pkthdr* h, const u_char* sp) const
+{
+    if (dump_handler == nullptr) {
+        return;
+    }
+
+    pcap_dump(reinterpret_cast<u_char*>(dump_handler), h, sp);
+    pcap_dump_flush(dump_handler);
 }
 
 int PacketSource::parse_header(const u_char** pkt_data, Packet*& p)
