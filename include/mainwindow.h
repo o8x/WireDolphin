@@ -43,12 +43,12 @@ public:
     void tableItemClicked(const QModelIndex& index);
     void toggleStartBtn();
     void initWidgets();
-    void updateCaptureStatusLabel() const;
     void initInterfaceList();
     void about();
     void activateStatsWindow() const;
     void saveAsPcap();
     void initMenus();
+    void updateMajorView(size_t, size_t) const;
 
 private:
     Ui::MainWindow* ui;

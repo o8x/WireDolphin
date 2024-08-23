@@ -126,6 +126,9 @@ void PacketSource::consume_queue()
             emit this->captured(history.size() - 1, p);
             dump_flush(p->get_header(), p->get_payload());
         }
+
+        // 一个捕获周期结束
+        emit this->capture_cycle_flush(period_average, history.size() - 1);
     }
 }
 

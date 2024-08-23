@@ -136,7 +136,6 @@ void MainWindow::captureInterfaceStarted(packetsource_state state)
 
     ui->layerTree->clear();
     interfaceStatusLabel->setText(state.interface_name.append(": ").append(state.state).c_str());
-    updateCaptureStatusLabel();
 }
 
 void MainWindow::captureInterfaceStopped(packetsource_state state) const
@@ -145,8 +144,6 @@ void MainWindow::captureInterfaceStopped(packetsource_state state) const
     ui->resetBtn->setDisabled(true);
     ui->startBtn->setText("Start");
     interfaceStatusLabel->setText(state.interface_name.append(": ").append(state.state).c_str());
-
-    updateCaptureStatusLabel();
 }
 
 void MainWindow::resetCapture()
@@ -262,17 +259,6 @@ void MainWindow::initWidgets()
     }
 }
 
-void MainWindow::updateCaptureStatusLabel() const
-{
-    size_t count = packetSource->packet_count();
-    if (count == 0) {
-        captureStatusLabel->setText("");
-        return;
-    }
-
-    captureStatusLabel->setText("packets: " + QString::number(count) + "/" + QString::number(count));
-}
-
 void MainWindow::acceptPacket(const int row, Packet* packet) const
 {
     string src = packet->get_host_src();
@@ -310,11 +296,6 @@ void MainWindow::acceptPacket(const int row, Packet* packet) const
     ui->packetsTable->setItem(row, 4, item4);
     ui->packetsTable->setItem(row, 5, item5);
     ui->packetsTable->setItem(row, 6, item6);
-
-    // 滚动到最底部，目前会导致表格卡顿和程序崩溃
-    // ui->packetsTable->verticalScrollBar()->setValue(ui->packetsTable->verticalScrollBar()->maximum());
-
-    updateCaptureStatusLabel();
 }
 
 void MainWindow::initSlots()
@@ -325,6 +306,7 @@ void MainWindow::initSlots()
     connect(packetSource, &PacketSource::listen_started, this, &MainWindow::captureInterfaceStarted);
     connect(packetSource, &PacketSource::listen_stopped, this, &MainWindow::captureInterfaceStopped);
     connect(packetSource, &PacketSource::captured, this, &MainWindow::acceptPacket);
+    connect(packetSource, &PacketSource::capture_cycle_flush, this, &MainWindow::updateMajorView);
     connect(ui->packetsTable, &QTableWidget::clicked, this, &MainWindow::tableItemClicked);
     connect(ui->loadFileBtn, &QPushButton::clicked, this, &MainWindow::loadOfflineFile);
 }
@@ -348,6 +330,34 @@ void MainWindow::loadOfflineFile() const
 
     packetSource->set_filename(filename.toStdString());
     packetSource->start_on_interface(nullptr, interface);
+}
+
+void MainWindow::updateMajorView(size_t period_average, size_t sum_capture) const
+{
+    // 滚动到最底部，大流量会导致表格卡顿和程序崩溃
+    ui->packetsTable->verticalScrollBar()->setValue(ui->packetsTable->verticalScrollBar()->maximum());
+
+    size_t count = packetSource->packet_count();
+    if (count == 0) {
+        captureStatusLabel->setText("");
+        return;
+    }
+
+    pcap_stat stats {};
+    pcap_stats(packetSource->get_interface(), &stats);
+
+    string msg = std::format("captured: {} droped: {}", count, stats.ps_drop);
+    captureStatusLabel->setText(msg.c_str());
+
+    // 悬浮气泡
+    std::ostringstream tip;
+    auto duration = std::chrono::high_resolution_clock::now() - time_start;
+    tip << count << " captured in " << std::chrono::duration_cast<std::chrono::seconds>(duration).count() << " seconds" << std::endl;
+    tip << stats.ps_recv << " received by filter" << std::endl;
+    tip << stats.ps_ifdrop << " dropped by interface" << std::endl;
+    tip << stats.ps_drop << " dropped by kernel" << std::endl;
+
+    captureStatusLabel->setToolTip(tip.str().c_str());
 }
 
 void MainWindow::tableItemClicked(const QModelIndex& index)

@@ -91,6 +91,7 @@ signals:
     void listen_started(PACKETSOURCE_STATE) const;
     void listen_stopped(PACKETSOURCE_STATE) const;
     void captured(size_t, Packet*);
+    void capture_cycle_flush(size_t, size_t);
 
 public:
     explicit PacketSource();
