@@ -26,12 +26,59 @@ using namespace std;
 #define HEX_TABLE_FONT_SIZE 11
 #define HEX_TABLE_SIDE_LENGTH 18 // 最小尺寸 19 * 22
 
+MainWindow::MainWindow(QWidget* parent)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
+
+    packetSource = new PacketSource();
+    statsWindow = new StatsWindow();
+    statsWindow->packetSource = packetSource;
+    statsWindow->initGraph();
+
+    initMenus();
+    initWindow();
+    initWidgets();
+    initInterfaceList();
+    initSlots();
+}
+
+MainWindow::~MainWindow()
+{
+    packetSource->free_wait();
+    pcap_freealldevs(allDevs);
+
+    delete ui;
+    delete interfaceStatusLabel;
+    delete packetSource;
+    delete captureStatusLabel;
+    delete frame;
+    delete datalinkTree;
+    delete networkTree;
+    delete transportTree;
+    delete applicationTree;
+    delete hexTableMenu;
+    delete trayIcon;
+    delete statsWindow;
+    delete fileMenu;
+    delete helpMenu;
+    delete windowMenu;
+    delete statsAct;
+    delete saveAct;
+    delete dumpFilename;
+    delete loadFileAct;
+    delete aboutAct;
+    delete aboutQtAct;
+}
+
 void MainWindow::closeEvent(QCloseEvent* event)
 {
     event->ignore();
 
     hide();
 }
+
 bool MainWindow::event(QEvent* event)
 {
     if (event->type() == QEvent::Move) {
@@ -53,28 +100,8 @@ bool MainWindow::event(QEvent* event)
     return QMainWindow::event(event);
 }
 
-MainWindow::MainWindow(QWidget* parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
-{
-    ui->setupUi(this);
-
-    packets = vector<Packet*>();
-    packetSource = new PacketSource(this, &packets);
-    statsWindow = new StatsWindow();
-    statsWindow->packetSource = packetSource;
-    statsWindow->initGraph();
-
-    initMenus();
-    initWindow();
-    initWidgets();
-    initInterfaceList();
-    initSlots();
-}
-
 void MainWindow::initWindow()
 {
-
     QSystemTrayIcon* tray = new QSystemTrayIcon();
     tray->setToolTip("WireDolphin");
 
@@ -85,57 +112,17 @@ void MainWindow::initWindow()
     trayIcon = new TrayIcon(tray, statsWindow);
 }
 
-MainWindow::~MainWindow()
-{
-    packetSource->free();
-    pcap_freealldevs(allDevs);
-    freePackets();
-
-    delete ui;
-    delete interfaceStatusLabel;
-    delete packetSource;
-    delete captureStatusLabel;
-    delete frame;
-    delete datalinkTree;
-    delete networkTree;
-    delete transportTree;
-    delete applicationTree;
-    delete hexTableMenu;
-    delete trayIcon;
-    delete statsWindow;
-    delete fileMenu;
-    delete helpMenu;
-    delete windowMenu;
-    delete statsAct;
-    delete loadFileAct;
-    delete aboutAct;
-    delete aboutQtAct;
-}
-
 void MainWindow::changeInterfaceIndex(int index) const
 {
     ui->startBtn->setDisabled(index == 0);
     ui->loadFileBtn->setDisabled(index != 0);
 }
 
-void MainWindow::freePackets()
+void MainWindow::captureInterfaceStarted(packetsource_state state)
 {
-    // 使用智能指针可以避免手动 delete 过程
-    // 但是现在不知道智能指针的原理，暂时先手动释放
-    // auto packets = vector<std::shared_ptr<Packet>>();
-    // auto x = std::make_shared<Packet>();
-    for_each(packets.begin(), packets.end(), [](Packet* p) {
-        delete p;
-    });
-
-    // 回收内存
-    packets.clear();
-    vector<Packet*>().swap(packets);
-}
-
-void MainWindow::captureInterfaceStarted(string name, string message)
-{
-    freePackets();
+    if (!state.dump_filename.empty()) {
+        dumpFilename->setText(state.dump_filename.c_str());
+    }
 
     time_start = std::chrono::high_resolution_clock::now();
     ui->interfaceList->setDisabled(true);
@@ -148,18 +135,15 @@ void MainWindow::captureInterfaceStarted(string name, string message)
     ui->hexTable->setRowCount(0);
 
     ui->layerTree->clear();
-    interfaceStatusLabel->setText(name.append(": ").append(message).c_str());
-    updateCaptureStatusLabel();
+    interfaceStatusLabel->setText(state.interface_name.append(": ").append(state.state).c_str());
 }
 
-void MainWindow::captureInterfaceStopped(string name, string message) const
+void MainWindow::captureInterfaceStopped(packetsource_state state) const
 {
     ui->interfaceList->setDisabled(false);
     ui->resetBtn->setDisabled(true);
     ui->startBtn->setText("Start");
-    interfaceStatusLabel->setText(name.append(": ").append(message).c_str());
-
-    updateCaptureStatusLabel();
+    interfaceStatusLabel->setText(state.interface_name.append(": ").append(state.state).c_str());
 }
 
 void MainWindow::resetCapture()
@@ -186,16 +170,14 @@ void MainWindow::toggleStartBtn()
             return;
         }
 
-        packetSource->init(device, interface);
-        packetSource->start();
+        packetSource->start_on_interface(device, interface);
 
         return;
     }
 
-    print_stat_info(packetSource->get_interface(), packets.size(), time_start);
+    print_stat_info(packetSource->get_interface(), packetSource->packet_count(), time_start);
 
-    packetSource->free();
-    packetSource->wait();
+    packetSource->free_wait();
 }
 
 void MainWindow::initWidgets()
@@ -277,21 +259,8 @@ void MainWindow::initWidgets()
     }
 }
 
-void MainWindow::updateCaptureStatusLabel() const
+void MainWindow::acceptPacket(const int row, Packet* packet) const
 {
-    if (packets.empty()) {
-        captureStatusLabel->setText("");
-        return;
-    }
-
-    size_t size = packets.size();
-    captureStatusLabel->setText("packets: " + QString::number(size) + "/" + QString::number(packets.size()));
-}
-
-void MainWindow::acceptPacket(const int index, Packet*) const
-{
-    auto packet = packets[index];
-
     string src = packet->get_host_src();
     string dst = packet->get_host_dst();
     if (packet->get_port_src() != 0) {
@@ -299,10 +268,10 @@ void MainWindow::acceptPacket(const int index, Packet*) const
         dst = dst.append(":").append(to_string(packet->get_port_dst()));
     }
 
-    ui->packetsTable->insertRow(index);
-    ui->packetsTable->setRowHeight(index, 18);
+    ui->packetsTable->insertRow(row);
+    ui->packetsTable->setRowHeight(row, 18);
 
-    auto* item0 = new QTableWidgetItem(QString::number(index));
+    auto* item0 = new QTableWidgetItem(QString::number(row));
     auto* item1 = new QTableWidgetItem(packet->get_time().substr(11).c_str());
     auto* item2 = new QTableWidgetItem(src.c_str());
     auto* item3 = new QTableWidgetItem(dst.c_str());
@@ -320,18 +289,13 @@ void MainWindow::acceptPacket(const int index, Packet*) const
     item5->setBackground(QBrush(color));
     item6->setBackground(QBrush(color));
 
-    ui->packetsTable->setItem(index, 0, item0);
-    ui->packetsTable->setItem(index, 1, item1);
-    ui->packetsTable->setItem(index, 2, item2);
-    ui->packetsTable->setItem(index, 3, item3);
-    ui->packetsTable->setItem(index, 4, item4);
-    ui->packetsTable->setItem(index, 5, item5);
-    ui->packetsTable->setItem(index, 6, item6);
-
-    // 滚动到最底部，目前会导致表格卡顿和程序崩溃
-    // ui->packetsTable->verticalScrollBar()->setValue(ui->packetsTable->verticalScrollBar()->maximum());
-
-    updateCaptureStatusLabel();
+    ui->packetsTable->setItem(row, 0, item0);
+    ui->packetsTable->setItem(row, 1, item1);
+    ui->packetsTable->setItem(row, 2, item2);
+    ui->packetsTable->setItem(row, 3, item3);
+    ui->packetsTable->setItem(row, 4, item4);
+    ui->packetsTable->setItem(row, 5, item5);
+    ui->packetsTable->setItem(row, 6, item6);
 }
 
 void MainWindow::initSlots()
@@ -342,6 +306,7 @@ void MainWindow::initSlots()
     connect(packetSource, &PacketSource::listen_started, this, &MainWindow::captureInterfaceStarted);
     connect(packetSource, &PacketSource::listen_stopped, this, &MainWindow::captureInterfaceStopped);
     connect(packetSource, &PacketSource::captured, this, &MainWindow::acceptPacket);
+    connect(packetSource, &PacketSource::capture_cycle_flush, this, &MainWindow::updateMajorView);
     connect(ui->packetsTable, &QTableWidget::clicked, this, &MainWindow::tableItemClicked);
     connect(ui->loadFileBtn, &QPushButton::clicked, this, &MainWindow::loadOfflineFile);
 }
@@ -364,13 +329,40 @@ void MainWindow::loadOfflineFile() const
     }
 
     packetSource->set_filename(filename.toStdString());
-    packetSource->init(nullptr, interface);
-    packetSource->start();
+    packetSource->start_on_interface(nullptr, interface);
+}
+
+void MainWindow::updateMajorView(size_t period_average, size_t sum_capture) const
+{
+    // 滚动到最底部，大流量会导致表格卡顿和程序崩溃
+    ui->packetsTable->verticalScrollBar()->setValue(ui->packetsTable->verticalScrollBar()->maximum());
+
+    size_t count = packetSource->packet_count();
+    if (count == 0) {
+        captureStatusLabel->setText("");
+        return;
+    }
+
+    pcap_stat stats {};
+    pcap_stats(packetSource->get_interface(), &stats);
+
+    string msg = std::format("captured: {} droped: {}", count, stats.ps_drop);
+    captureStatusLabel->setText(msg.c_str());
+
+    // 悬浮气泡
+    std::ostringstream tip;
+    auto duration = std::chrono::high_resolution_clock::now() - time_start;
+    tip << count << " captured in " << std::chrono::duration_cast<std::chrono::seconds>(duration).count() << " seconds" << std::endl;
+    tip << stats.ps_recv << " received by filter" << std::endl;
+    tip << stats.ps_ifdrop << " dropped by interface" << std::endl;
+    tip << stats.ps_drop << " dropped by kernel" << std::endl;
+
+    captureStatusLabel->setToolTip(tip.str().c_str());
 }
 
 void MainWindow::tableItemClicked(const QModelIndex& index)
 {
-    auto packet = packets[index.row()];
+    auto packet = packetSource->peek(index.row());
 
     delete frame;
     delete datalinkTree;
@@ -658,12 +650,37 @@ void MainWindow::activateStatsWindow() const
     statsWindow->activateWindow();
 }
 
+void MainWindow::saveAsPcap()
+{
+    if (packetSource->get_dump_filename().empty()) {
+        QMessageBox::warning(this, "", "no dump file");
+        return;
+    }
+
+    string basedir = QStandardPaths::standardLocations(QStandardPaths::DocumentsLocation)[0]
+                         .toStdString();
+
+    QString fileName = QFileDialog::getSaveFileName(this, "Save document", basedir.c_str(), "*.pcap");
+    if (!fileName.isEmpty()) {
+        std::filesystem::rename(packetSource->get_dump_filename(), fileName.toStdString());
+        trayIcon->showMessage("INFO", std::format("Save complete: {}", fileName.toStdString()));
+    }
+}
+
 void MainWindow::initMenus()
 {
     // 加载本地 pcap 文件，该功能可以调用，但会立即崩溃
     loadFileAct = new QAction(tr("&Load offline .pcap"), this);
     loadFileAct->setShortcuts(QKeySequence::Open);
     connect(loadFileAct, &QAction::triggered, this, &MainWindow::loadOfflineFile);
+
+    // 本质上就是把捕获的 pcap 文件移动到新路径
+    saveAct = new QAction(tr("&Dump File"), this);
+    saveAct->setShortcuts(QKeySequence::SaveAs);
+    connect(saveAct, &QAction::triggered, this, &MainWindow::saveAsPcap);
+
+    dumpFilename = new QAction("Wait Start.", this);
+    dumpFilename->setDisabled(true);
 
     // 打开统计视图
     statsAct = new QAction(tr("&Statistics"), this);
@@ -679,6 +696,10 @@ void MainWindow::initMenus()
     // 如果 Action 在默认菜单列已经实现，则不会显示该 Action
     fileMenu = new QMenu(tr("&File"), this);
     fileMenu->addAction(loadFileAct);
+    fileMenu->addAction(saveAct);
+    fileMenu->addAction(saveAct);
+    fileMenu->addSeparator();
+    fileMenu->addAction(dumpFilename);
 
     // Help 在 Mac 下会被合并到默认菜单列
     helpMenu = new QMenu(tr("&Help"), this);

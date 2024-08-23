@@ -34,9 +34,8 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
     void changeInterfaceIndex(int index) const;
-    void freePackets();
-    void captureInterfaceStarted(string name, string message);
-    void captureInterfaceStopped(string name, string message) const;
+    void captureInterfaceStarted(packetsource_state state);
+    void captureInterfaceStopped(packetsource_state state) const;
     void resetCapture();
     void acceptPacket(int index, Packet* p) const;
     void initSlots();
@@ -44,17 +43,17 @@ public:
     void tableItemClicked(const QModelIndex& index);
     void toggleStartBtn();
     void initWidgets();
-    void updateCaptureStatusLabel() const;
     void initInterfaceList();
     void about();
     void activateStatsWindow() const;
+    void saveAsPcap();
     void initMenus();
+    void updateMajorView(size_t, size_t) const;
 
 private:
     Ui::MainWindow* ui;
     pcap_if_t* allDevs = nullptr;
     PacketSource* packetSource;
-    vector<Packet*> packets;
     bool captureStart = false;
     QLabel* interfaceStatusLabel = new QLabel("", this);
     QLabel* captureStatusLabel = new QLabel("", this);
@@ -71,6 +70,8 @@ private:
     QMenu* helpMenu = nullptr;
     QMenu* windowMenu = nullptr;
     QAction* loadFileAct = nullptr;
+    QAction* saveAct = nullptr;
+    QAction* dumpFilename = nullptr;
     QAction* aboutAct = nullptr;
     QAction* statsAct = nullptr;
     QAction* aboutQtAct = nullptr;

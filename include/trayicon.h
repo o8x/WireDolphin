@@ -10,5 +10,6 @@ class TrayIcon : public QWidget {
 public:
     explicit TrayIcon(QSystemTrayIcon* t, QWidget* wdi);
     ~TrayIcon();
+    void showMessage(const std::string& title, const std::string& message) const;
     void onActivated(QSystemTrayIcon::ActivationReason reason) const;
 };

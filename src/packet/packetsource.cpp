@@ -1,23 +1,140 @@
 #include "packetsource.h"
 #include "dissectors/arp.h"
 #include "dissectors/ethernet.h"
+#include "dissectors/icmp.h"
 #include "dissectors/ipv4.h"
 #include "dissectors/ipv6.h"
 #include "dissectors/tcp.h"
 #include "dissectors/udp.h"
 #include "interface.h"
 #include "utils.h"
-#include <QDebug>
 #include <QtCore/qcoreapplication.h>
+#include <__filesystem/operations.h>
+#include <glog/logging.h>
 #include <iostream>
 
 using namespace std;
 
-void PacketSource::init(pcap_if_t* device, pcap_t* interface)
+PacketSource::~PacketSource()
+{
+    free_history();
+}
+
+PacketSource::PacketSource()
+{
+    bridge = std::queue<Packet*>();
+    history = std::vector<Packet*>();
+    last_access = std::chrono::steady_clock::now();
+}
+
+void PacketSource::start_on_interface(pcap_if_t* device, pcap_t* interface)
 {
     this->device = device;
     this->interface = interface;
     this->running = true;
+
+    free_history();
+
+    if (device != nullptr) {
+        dump_filename = std::format("/tmp/{}.{}.pcap", device->name, std::time(0));
+    } else {
+        dump_filename = std::format("/tmp/{}.pcap", std::time(0));
+    }
+
+    LOG(INFO) << std::format("open dump handler, filename: {}", dump_filename);
+    this->dump_handler = pcap_dump_open(interface, dump_filename.c_str());
+
+    fill_thread = std::thread([this]() {
+        this->capture_packet();
+    });
+
+    consume_thread = std::thread([this]() {
+        this->consume_queue();
+    });
+}
+
+size_t PacketSource::packet_count() const
+{
+    return history.size();
+}
+
+Packet* PacketSource::peek(int index) const
+{
+    return history[index];
+}
+
+void PacketSource::free_wait()
+{
+    this->running = false;
+
+    if (this->interface != nullptr) {
+        pcap_close(this->interface);
+        this->interface = nullptr;
+    }
+
+    if (this->device != nullptr) {
+        this->device = nullptr;
+    }
+
+    if (this->dump_handler != nullptr) {
+        pcap_dump_close(this->dump_handler);
+        this->dump_handler = nullptr;
+    }
+
+    if (fill_thread.joinable()) {
+        fill_thread.join();
+    }
+
+    if (consume_thread.joinable()) {
+        consume_thread.join();
+    }
+}
+
+void PacketSource::consume_queue()
+{
+    while (running) {
+        auto now = std::chrono::steady_clock::now();
+
+        // 获取锁
+        std::unique_lock l(mtx);
+
+        // 桥中没有数据 || 数据量小于平均数
+        if (const size_t size = bridge.size(); size == 0 || size < period_average) {
+            continue;
+        }
+
+        // 数据不够，并且也不到指定的更新周期
+        if (now - last_access < std::chrono::milliseconds(DEFAULT_QUEUE_UPDATE_TIMEOUT_MS)) {
+            continue;
+        }
+
+        // 复制队列的全部值
+        std::queue<Packet*> q_copy = std::move(bridge);
+        // 释放队列内存，可能不需要，因为 WAIT_QUEUE_MS 周期内不一定能占用多大内存
+        std::queue<Packet*>().swap(bridge);
+        l.unlock();
+
+        last_access = now;
+        period_average = AVERAGE_PERIOD(q_copy.size() / DEFAULT_QUEUE_UPDATE_TIMEOUT_MS);
+
+        // 锁已经被自动释放了
+        // 此时消费复制的值，将不会持有锁
+        for (; !q_copy.empty(); q_copy.pop()) {
+            auto p = q_copy.front();
+            history.push_back(p);
+
+            emit this->captured(history.size() - 1, p);
+            dump_flush(p->get_header(), p->get_payload());
+        }
+
+        // 一个捕获周期结束
+        emit this->capture_cycle_flush(period_average, history.size() - 1);
+    }
+}
+
+string PacketSource::get_dump_filename() const
+{
+    return dump_filename;
 }
 
 string PacketSource::get_filename() const
@@ -35,25 +152,44 @@ pcap_t* PacketSource::get_interface() const
     return interface;
 }
 
-void PacketSource::free()
+/**
+ * 清空队列与历史捕获包
+ */
+void PacketSource::free_history()
 {
-    this->running = false;
+    // 获取锁
+    std::unique_lock l(mtx);
 
-    if (this->interface != nullptr) {
-        pcap_close(this->interface);
-        this->interface = nullptr;
+    // 清空历史捕获的包和占用的内存
+    ranges::for_each(history, [](Packet* p) {
+        delete p;
+    });
+
+    for (; !bridge.empty(); bridge.pop()) {
+        delete bridge.front();
     }
 
-    if (this->device != nullptr) {
-        this->device = nullptr;
+    vector<Packet*>().swap(history);
+    std::queue<Packet*>().swap(bridge);
+
+    // 清空捕获文件的名称
+    if (this->dump_filename.empty()) {
+        return;
     }
+
+    std::filesystem::remove(this->dump_filename);
+    LOG(INFO) << std::format("remove {}", this->dump_filename);
+    this->dump_filename = "";
 }
 
-void PacketSource::run()
+void PacketSource::capture_packet()
 {
     const string name = this->device ? this->device->name : this->filename;
 
-    emit listen_started(name, "on");
+    emit listen_started({ .dump_filename = dump_filename,
+        .interface_name = name,
+        .state = "on" });
+
     while (true) {
         if (!running || this->interface == nullptr) {
             break;
@@ -72,20 +208,32 @@ void PacketSource::run()
             continue;
         }
 
-        p->set_time(format_timeval_to_string(pkt_header->ts));
+        p->set_header(pkt_header);
         p->set_payload(&pkt_data);
 
-        packetsPtr->push_back(p);
-        // 如果并发，会有线程安全问题，size 不准
-        emit this->captured(packetsPtr->size() - 1, p);
+        std::unique_lock l(mtx);
+        bridge.push(p);
     }
 
-    emit this->listen_stopped(name, "off");
+    emit listen_stopped({ .dump_filename = dump_filename,
+        .interface_name = name,
+        .state = "off" });
+}
+
+void PacketSource::dump_flush(const pcap_pkthdr* h, const u_char* sp) const
+{
+    if (dump_handler == nullptr) {
+        return;
+    }
+
+    pcap_dump(reinterpret_cast<u_char*>(dump_handler), h, sp);
+    pcap_dump_flush(dump_handler);
 }
 
 int PacketSource::parse_header(const u_char** pkt_data, Packet*& p)
 {
     ethernet_header* eth = (ETHERNET_HEADER*)*pkt_data;
+    string info = p->get_info();
 
     p->set_link_src(bytes_to_ascii(eth->link_src, 6, ":"));
     p->set_link_dst(bytes_to_ascii(eth->link_dst, 6, ":"));
@@ -113,9 +261,58 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p)
         case 0:
             p->set_type("-");
             break;
-        case 1:
+        case 1: {
             p->set_type("ICMP");
+
+            icmp_header icmp;
+            memcpy(&icmp, *pkt_data + sizeof(ethernet_header) + p->get_ip_header_len(), sizeof(ICMP_HEADER));
+
+            switch (icmp.type) {
+            case ICMP_TYPE_UNREACHABLE: {
+                switch (icmp.code) {
+                case 0:
+                    info.append("Network Unreachable");
+                    break;
+                case 1:
+                    info.append("Host Unreachable");
+                    break;
+                case 2:
+                    info.append("Protocol Unreachable");
+                    break;
+                case 3:
+                    info.append("Port Unreachable");
+                    break;
+                default:
+                    info.append("Unreachable");
+                }
+
+                break;
+            }
+            case ICMP_TYPE_SOURCE_CLOSED:
+                info.append("Request timeout");
+                break;
+            case ICMP_TYPE_ECHO_REQUEST:
+            case ICMP_TYPE_ECHO_REPLY:
+                if (icmp.type == ICMP_TYPE_ECHO_REQUEST) {
+                    info.append("Echo Request");
+                } else {
+                    info.append("Echo Reply");
+                }
+
+                icmp_echo echo;
+                memcpy(&echo, *pkt_data + sizeof(ethernet_header) + p->get_ip_header_len(), sizeof(ICMP_ECHO));
+
+                info.append(std::format(" id 0x{}", bytes_to_ascii(echo.identifier, 2, "")));
+                info.append(std::format(" seq 0x{}", bytes_to_ascii(echo.seq_number, 2, "")));
+                break;
+            default:
+                info.append(std::format("type {} code {}", byte_to_ascii(icmp.type), byte_to_ascii(icmp.code)));
+                break;
+            }
+
+            p->set_info(info);
             break;
+        }
         case 2:
             p->set_type("IGMP");
             break;
@@ -139,8 +336,6 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p)
             p->set_port_dst(tcp->dst_port);
             p->set_tcp_flags(flags);
             p->set_tcp(tcp);
-
-            string info = p->get_info();
 
             int layer4_offset = 14 + p->get_ip_header_len() + p->get_tcp_header_len();
             std::istringstream stream(reinterpret_cast<const char*>(*pkt_data + layer4_offset));
@@ -274,7 +469,6 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p)
         p->set_host_src(bytes_to_ip(arp->sender_host));
         p->set_host_dst(bytes_to_ip(arp->destination_host));
 
-        string info = p->get_info();
         switch (arp->op) {
         case 1:
             info.append("Broadcast Ask ");

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <iostream>
 #include <pcap.h>
 #include <string>
 #include <vector>
@@ -23,6 +22,7 @@ class Packet {
     int ip_version = 0;
     u_short type_flag {};
     u_char payload[2048] = {};
+    pcap_pkthdr* header = nullptr;
     ipv4_header* ipv4 = nullptr;
     ipv6_header* ipv6 = nullptr;
     tcp_header* tcp = nullptr;
@@ -30,6 +30,7 @@ class Packet {
     udp_header* udp = nullptr;
     tcp_flags* flags = nullptr;
     string time;
+    timeval* time_ts = nullptr;
     string link_src;
     string link_dst;
     string host_src;
@@ -62,6 +63,7 @@ public:
     [[nodiscard]] vector<int> get_color() const;
     [[nodiscard]] arp_header* get_arp() const;
     [[nodiscard]] udp_header* get_udp() const;
+    [[nodiscard]] pcap_pkthdr* get_header() const;
     void set_udp(udp_header* udp);
     void set_arp(arp_header* arp);
     void set_port_src(int port_src);
@@ -79,7 +81,7 @@ public:
     void set_type(const string& type);
     void set_len(int len, int caplen);
     void set_info(const string& info);
-    void set_time(const string& time);
+    void set_header(pcap_pkthdr* hdr);
     void set_type_flag(u_short);
     void set_payload(const u_char** pkt_data);
 };

@@ -17,6 +17,11 @@ TrayIcon::~TrayIcon()
     delete wdi;
 }
 
+void TrayIcon::showMessage(const std::string& title, const std::string& message) const
+{
+    tray->showMessage(title.c_str(), message.c_str());
+}
+
 void TrayIcon::onActivated(QSystemTrayIcon::ActivationReason reason) const
 {
     // 图标的位置的 x 是屏幕最左侧到图标最左侧的距离
