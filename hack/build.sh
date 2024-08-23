@@ -25,3 +25,5 @@ cd ..
 
 mv ${CMAKE_BUILD_DIR}/*.dmg .
 rm -rf ${CMAKE_BUILD_DIR}
+
+echo -e "use Console.app to watch WireDolphin Log"

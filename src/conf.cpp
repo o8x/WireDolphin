@@ -75,7 +75,17 @@ void conf::create_core_config()
     doc.InsertFirstChild(declaration);
 
     auto logger = doc.NewElement("Logger");
-    logger->InsertNewChildElement("BaseDir")->SetText("../logs");
+
+#ifdef __linux__
+    std::string logDir = "/var/log";
+#elif __APPLE__
+    std::string home = QStandardPaths::standardLocations(QStandardPaths::HomeLocation)[0].toStdString();
+    std::string logDir = std::format("{}/Library/Logs/", home);
+#else
+    std::string logDir = "../logs";
+#endif
+
+    logger->InsertNewChildElement("BaseDir")->SetText(logDir.c_str());
 
     auto* window = doc.NewElement("Window");
     window->InsertNewChildElement("Width")->SetText(1700);

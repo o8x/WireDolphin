@@ -34,7 +34,6 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
     void changeInterfaceIndex(int index) const;
-    void freePackets();
     void captureInterfaceStarted(packetsource_state state);
     void captureInterfaceStopped(packetsource_state state) const;
     void resetCapture();
@@ -55,7 +54,6 @@ private:
     Ui::MainWindow* ui;
     pcap_if_t* allDevs = nullptr;
     PacketSource* packetSource;
-    vector<Packet*> packets;
     bool captureStart = false;
     QLabel* interfaceStatusLabel = new QLabel("", this);
     QLabel* captureStatusLabel = new QLabel("", this);

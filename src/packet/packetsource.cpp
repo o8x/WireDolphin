@@ -7,7 +7,6 @@
 #include "dissectors/udp.h"
 #include "interface.h"
 #include "utils.h"
-#include <QDebug>
 #include <QtCore/qcoreapplication.h>
 #include <__filesystem/operations.h>
 #include <glog/logging.h>
@@ -17,28 +16,24 @@ using namespace std;
 
 PacketSource::~PacketSource()
 {
-    free();
-    clean_last_dump();
+    free_history();
 }
 
-void PacketSource::clean_last_dump()
+PacketSource::PacketSource()
 {
-    if (this->dump_filename.empty()) {
-        return;
-    }
-
-    std::filesystem::remove(this->dump_filename);
-    LOG(INFO) << std::format("remove {}", this->dump_filename);
-    this->dump_filename = "";
+    bridge = std::queue<Packet*>();
+    history = std::vector<Packet*>();
+    last_access = std::chrono::steady_clock::now();
 }
 
-void PacketSource::init(pcap_if_t* device, pcap_t* interface)
+void PacketSource::start_on_interface(pcap_if_t* device, pcap_t* interface)
 {
     this->device = device;
     this->interface = interface;
     this->running = true;
 
-    clean_last_dump();
+    free_history();
+
     if (device != nullptr) {
         dump_filename = std::format("/tmp/{}.{}.pcap", device->name, std::time(0));
     } else {
@@ -47,9 +42,27 @@ void PacketSource::init(pcap_if_t* device, pcap_t* interface)
 
     LOG(INFO) << std::format("open dump handler, filename: {}", dump_filename);
     this->dump_handler = pcap_dump_open(interface, dump_filename.c_str());
+
+    fill_thread = std::thread([this]() {
+        this->capture_packet();
+    });
+
+    consume_thread = std::thread([this]() {
+        this->consume_queue();
+    });
 }
 
-void PacketSource::free()
+size_t PacketSource::packet_count() const
+{
+    return history.size();
+}
+
+Packet* PacketSource::peek(int index) const
+{
+    return history[index];
+}
+
+void PacketSource::free_wait()
 {
     this->running = false;
 
@@ -66,7 +79,55 @@ void PacketSource::free()
         pcap_dump_close(this->dump_handler);
         this->dump_handler = nullptr;
     }
+
+    if (fill_thread.joinable()) {
+        fill_thread.join();
+    }
+
+    if (consume_thread.joinable()) {
+        consume_thread.join();
+    }
 }
+
+void PacketSource::consume_queue()
+{
+    while (running) {
+        auto now = std::chrono::steady_clock::now();
+
+        // 获取锁
+        std::unique_lock l(mtx);
+
+        // 桥中没有数据 || 数据量小于平均数
+        if (const size_t size = bridge.size(); size == 0 || size < period_average) {
+            continue;
+        }
+
+        // 数据不够，并且也不到指定的更新周期
+        if (now - last_access < std::chrono::milliseconds(DEFAULT_QUEUE_UPDATE_TIMEOUT_MS)) {
+            continue;
+        }
+
+        // 复制队列的全部值
+        std::queue<Packet*> q_copy = std::move(bridge);
+        // 释放队列内存，可能不需要，因为 WAIT_QUEUE_MS 周期内不一定能占用多大内存
+        std::queue<Packet*>().swap(bridge);
+        l.unlock();
+
+        last_access = now;
+        period_average = AVERAGE_PERIOD(q_copy.size() / DEFAULT_QUEUE_UPDATE_TIMEOUT_MS);
+
+        // 锁已经被自动释放了
+        // 此时消费复制的值，将不会持有锁
+        for (; !q_copy.empty(); q_copy.pop()) {
+            auto p = q_copy.front();
+            history.push_back(p);
+
+            emit this->captured(history.size() - 1, p);
+            dump_flush(p->get_header(), p->get_payload());
+        }
+    }
+}
+
 string PacketSource::get_dump_filename() const
 {
     return dump_filename;
@@ -87,7 +148,37 @@ pcap_t* PacketSource::get_interface() const
     return interface;
 }
 
-void PacketSource::run()
+/**
+ * 清空队列与历史捕获包
+ */
+void PacketSource::free_history()
+{
+    // 获取锁
+    std::unique_lock l(mtx);
+
+    // 清空历史捕获的包和占用的内存
+    ranges::for_each(history, [](Packet* p) {
+        delete p;
+    });
+
+    for (; !bridge.empty(); bridge.pop()) {
+        delete bridge.front();
+    }
+
+    vector<Packet*>().swap(history);
+    std::queue<Packet*>().swap(bridge);
+
+    // 清空捕获文件的名称
+    if (this->dump_filename.empty()) {
+        return;
+    }
+
+    std::filesystem::remove(this->dump_filename);
+    LOG(INFO) << std::format("remove {}", this->dump_filename);
+    this->dump_filename = "";
+}
+
+void PacketSource::capture_packet()
 {
     const string name = this->device ? this->device->name : this->filename;
 
@@ -113,16 +204,14 @@ void PacketSource::run()
             continue;
         }
 
-        p->set_time(format_timeval_to_string(pkt_header->ts));
+        p->set_header(pkt_header);
         p->set_payload(&pkt_data);
 
-        packetsPtr->push_back(p);
-        dump_flush(pkt_header, pkt_data);
-        // 如果并发，会有线程安全问题，size 不准
-        emit this->captured(packetsPtr->size() - 1, p);
+        std::unique_lock l(mtx);
+        bridge.push(p);
     }
 
-    emit listen_started({ .dump_filename = dump_filename,
+    emit listen_stopped({ .dump_filename = dump_filename,
         .interface_name = name,
         .state = "off" });
 }

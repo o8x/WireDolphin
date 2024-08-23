@@ -6,6 +6,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
 # 无法自动加载时，设置 QT 目录
 #set(Qt6_DIR $ENV{HOME}/Qt6/6.7.2/macos/lib/cmake/Qt6)
 
@@ -55,9 +57,18 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DDEBUG_BUILD)
 endif ()
 
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    # 为 release 模式设置优化选型
+    # -O3：开启最高级别的优化
+    # -march=native：针对构建机器的本地架构进行优化（这可能会生成仅在类似机器上运行良好的代码）
+    # -ffast-math：允许编译器在浮点数运算中使用可能违反 IEEE 标准的优化，能显著提高执行速度，但可能会破坏浮点数的精确度或兼容性
+    # -DNDEBUG：定义 NDEBUG 宏，这通常会关闭 assert() 语句（如果你在使用它们的话）
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -ffast-math -DNDEBUG")
+endif ()
+
 # qt core
-find_package(Qt6 COMPONENTS Core Gui Widgets Charts PrintSupport REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core Qt::Gui Qt::Charts Qt::Widgets Qt::PrintSupport)
+find_package(Qt6 COMPONENTS Core Gui Widgets PrintSupport REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt::Core Qt::Gui Qt::Widgets Qt::PrintSupport)
 # glog
 find_package(glog CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE glog::glog)

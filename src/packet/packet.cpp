@@ -1,5 +1,5 @@
 #include "packet.h"
-#include <iostream>
+#include "utils.h"
 
 string Packet::get_link_src() const
 {
@@ -72,9 +72,15 @@ void Packet::set_len(const int len, const int caplen)
     return time;
 }
 
-void Packet::set_time(const string& time)
+[[nodiscard]] pcap_pkthdr* Packet::get_header() const
 {
-    this->time = time;
+    return header;
+}
+
+void Packet::set_header(pcap_pkthdr* hdr)
+{
+    this->header = hdr;
+    this->time = format_timeval_to_string(hdr->ts);
 }
 
 void Packet::set_type_flag(u_short flag)
