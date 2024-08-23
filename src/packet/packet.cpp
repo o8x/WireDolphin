@@ -200,6 +200,10 @@ vector<int> Packet::get_color() const
         return { 0, 250, 154 };
     }
 
+    if (this->type == "ICMP") {
+        return { 211, 211, 211 };
+    }
+
     if (this->flags != nullptr) {
         /**
          * 三次握手

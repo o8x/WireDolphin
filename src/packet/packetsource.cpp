@@ -1,6 +1,7 @@
 #include "packetsource.h"
 #include "dissectors/arp.h"
 #include "dissectors/ethernet.h"
+#include "dissectors/icmp.h"
 #include "dissectors/ipv4.h"
 #include "dissectors/ipv6.h"
 #include "dissectors/tcp.h"
@@ -229,6 +230,7 @@ void PacketSource::dump_flush(const pcap_pkthdr* h, const u_char* sp) const
 int PacketSource::parse_header(const u_char** pkt_data, Packet*& p)
 {
     ethernet_header* eth = (ETHERNET_HEADER*)*pkt_data;
+    string info = p->get_info();
 
     p->set_link_src(bytes_to_ascii(eth->link_src, 6, ":"));
     p->set_link_dst(bytes_to_ascii(eth->link_dst, 6, ":"));
@@ -256,9 +258,58 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p)
         case 0:
             p->set_type("-");
             break;
-        case 1:
+        case 1: {
             p->set_type("ICMP");
+
+            icmp_header icmp;
+            memcpy(&icmp, *pkt_data + sizeof(ethernet_header) + p->get_ip_header_len(), sizeof(ICMP_HEADER));
+
+            switch (icmp.type) {
+            case ICMP_TYPE_UNREACHABLE: {
+                switch (icmp.code) {
+                case 0:
+                    info.append("Network Unreachable");
+                    break;
+                case 1:
+                    info.append("Host Unreachable");
+                    break;
+                case 2:
+                    info.append("Protocol Unreachable");
+                    break;
+                case 3:
+                    info.append("Port Unreachable");
+                    break;
+                default:
+                    info.append("Unreachable");
+                }
+
+                break;
+            }
+            case ICMP_TYPE_SOURCE_CLOSED:
+                info.append("Request timeout");
+                break;
+            case ICMP_TYPE_ECHO_REQUEST:
+            case ICMP_TYPE_ECHO_REPLY:
+                if (icmp.type == ICMP_TYPE_ECHO_REQUEST) {
+                    info.append("Echo Request");
+                } else {
+                    info.append("Echo Reply");
+                }
+
+                icmp_echo echo;
+                memcpy(&echo, *pkt_data + sizeof(ethernet_header) + p->get_ip_header_len(), sizeof(ICMP_ECHO));
+
+                info.append(std::format(" id 0x{}", bytes_to_ascii(echo.identifier, 2, "")));
+                info.append(std::format(" seq 0x{}", bytes_to_ascii(echo.seq_number, 2, "")));
+                break;
+            default:
+                info.append(std::format("type {} code {}", byte_to_ascii(icmp.type), byte_to_ascii(icmp.code)));
+                break;
+            }
+
+            p->set_info(info);
             break;
+        }
         case 2:
             p->set_type("IGMP");
             break;
@@ -282,8 +333,6 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p)
             p->set_port_dst(tcp->dst_port);
             p->set_tcp_flags(flags);
             p->set_tcp(tcp);
-
-            string info = p->get_info();
 
             int layer4_offset = 14 + p->get_ip_header_len() + p->get_tcp_header_len();
             std::istringstream stream(reinterpret_cast<const char*>(*pkt_data + layer4_offset));
@@ -417,7 +466,6 @@ int PacketSource::parse_header(const u_char** pkt_data, Packet*& p)
         p->set_host_src(bytes_to_ip(arp->sender_host));
         p->set_host_dst(bytes_to_ip(arp->destination_host));
 
-        string info = p->get_info();
         switch (arp->op) {
         case 1:
             info.append("Broadcast Ask ");

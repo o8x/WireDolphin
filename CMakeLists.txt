@@ -51,6 +51,8 @@ add_executable(${PROJECT_NAME}
         src/trayicon.cpp
         include/conf.h
         src/conf.cpp
+        include/dissectors/icmp.h
+        src/dissectors/icmp.cpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
