@@ -1,16 +1,14 @@
 #include "conf.h"
-
+#include "utils.h"
+#include <QMessageBox>
 #include <__filesystem/operations.h>
 #include <qstandardpaths.h>
-#include <unistd.h>
-
-#include <QMessageBox>
 #define CORE_CONFIG_FILENAME "Core.xml"
 
 conf::conf()
 {
     // 文件不存在时创建默认配置文件
-    if (access(core_config_name().c_str(), F_OK) != 0) {
+    if (file_not_exist(core_config_name())) {
         create_core_config();
     }
 
@@ -25,6 +23,12 @@ conf::conf()
 void conf::update_core() const
 {
     core_->SaveFile(core_config_name().c_str());
+}
+
+void conf::auto_update(const std::function<void(tinyxml2::XMLDocument*)>& fn) const
+{
+    fn(core_);
+    update_core();
 }
 
 // 单例模式加载配置文件
@@ -64,6 +68,57 @@ void conf::create_local_data_directory()
     }
 }
 
+std::vector<std::string> conf::get_recent_files() const
+{
+    std::vector<std::string> res;
+
+    auto* list = core_->FirstChildElement("RecentFileList");
+    if (list == nullptr) {
+        return res;
+    }
+
+    // 查询是否已经存在过
+    auto* head = list->FirstChildElement("Item");
+
+    do {
+        res.emplace_back(head->GetText());
+        head = head->NextSiblingElement("Item");
+    } while (head != nullptr);
+
+    return res;
+}
+
+void conf::clear_recent() const
+{
+    auto* list = core_->FirstChildElement("RecentFileList");
+    core_->DeleteNode(list);
+    update_core();
+}
+
+void conf::append_recent_file(const std::string& name) const
+{
+    auto* list = core_->FirstChildElement("RecentFileList");
+    if (list == nullptr) {
+        core_->InsertFirstChild(core_->NewElement("RecentFileList"));
+        list = core_->FirstChildElement("RecentFileList");
+    }
+
+    // 查询是否已经存在过
+    auto* head = list->FirstChildElement("Item");
+
+    do {
+        if (const char* text = head->GetText(); name.c_str() == text) {
+            return;
+        }
+
+        head = head->NextSiblingElement("Item");
+    } while (head != nullptr);
+
+    auto item = core_->NewElement("Item");
+    item->SetText(name.c_str());
+    list->InsertFirstChild(item);
+}
+
 void conf::create_core_config()
 {
     // 创建配置文件夹
@@ -94,6 +149,7 @@ void conf::create_core_config()
     window->InsertNewChildElement("PosX")->SetText(50);
     window->InsertNewChildElement("PosY")->SetText(50);
 
+    doc.InsertEndChild(doc.NewElement("RecentFileList"));
     doc.InsertEndChild(logger);
     doc.InsertEndChild(window);
     doc.SaveFile(core_config_name().c_str());

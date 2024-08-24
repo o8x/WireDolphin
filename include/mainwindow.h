@@ -40,7 +40,8 @@ public:
     void resetCapture();
     void acceptPacket(int index, Packet* p) const;
     void initSlots();
-    void loadOfflineFile() const;
+    void loadOfflinePcap(string filename) const;
+    void openLoadOfflineFileDialog() const;
     void tableItemClicked(const QModelIndex& index);
     void toggleStartBtn();
     void initWidgets();
@@ -70,6 +71,8 @@ private:
     QMenu* fileMenu = nullptr;
     QMenu* helpMenu = nullptr;
     QMenu* windowMenu = nullptr;
+    QMenu* lastFiles = nullptr;
+    QAction* clearLastFiles = nullptr;
     QAction* loadFileAct = nullptr;
     QAction* saveAct = nullptr;
     QAction* dumpFilename = nullptr;

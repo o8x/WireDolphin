@@ -70,6 +70,8 @@ MainWindow::~MainWindow()
     delete loadFileAct;
     delete aboutAct;
     delete aboutQtAct;
+    delete lastFiles;
+    delete clearLastFiles;
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)
@@ -308,10 +310,27 @@ void MainWindow::initSlots()
     connect(packetSource, &PacketSource::captured, this, &MainWindow::acceptPacket);
     connect(packetSource, &PacketSource::capture_cycle_flush, this, &MainWindow::updateMajorView);
     connect(ui->packetsTable, &QTableWidget::clicked, this, &MainWindow::tableItemClicked);
-    connect(ui->loadFileBtn, &QPushButton::clicked, this, &MainWindow::loadOfflineFile);
+    connect(ui->loadFileBtn, &QPushButton::clicked, this, &MainWindow::openLoadOfflineFileDialog);
 }
 
-void MainWindow::loadOfflineFile() const
+void MainWindow::loadOfflinePcap(string filename) const
+{
+    char ebuf[PCAP_ERRBUF_SIZE];
+    pcap_t* interface = open_offline_pcap(filename.c_str(), 0, ebuf);
+    if (interface == nullptr) {
+        QMessageBox::warning(ui->loadFileBtn, "Warning", ebuf);
+        return;
+    }
+
+    packetSource->set_filename(filename);
+    packetSource->start_on_interface(nullptr, interface);
+
+    conf::instance().auto_update([filename](tinyxml2::XMLDocument* core) {
+        conf::instance().append_recent_file(filename);
+    });
+}
+
+void MainWindow::openLoadOfflineFileDialog() const
 {
     QString filename = QFileDialog::getOpenFileName(
         ui->loadFileBtn, "Select a pcap file",
@@ -321,15 +340,7 @@ void MainWindow::loadOfflineFile() const
         return;
     }
 
-    char ebuf[PCAP_ERRBUF_SIZE];
-    pcap_t* interface = open_offline_pcap(filename.toStdString().c_str(), 0, ebuf);
-    if (interface == nullptr) {
-        QMessageBox::warning(ui->loadFileBtn, "Warning", ebuf);
-        return;
-    }
-
-    packetSource->set_filename(filename.toStdString());
-    packetSource->start_on_interface(nullptr, interface);
+    loadOfflinePcap(filename.toStdString());
 }
 
 void MainWindow::updateMajorView(size_t period_average, size_t sum_capture) const
@@ -669,13 +680,13 @@ void MainWindow::saveAsPcap()
 
 void MainWindow::initMenus()
 {
-    // 加载本地 pcap 文件，该功能可以调用，但会立即崩溃
-    loadFileAct = new QAction(tr("&Load offline .pcap"), this);
+    // 加载本地 pcap 文件
+    loadFileAct = new QAction(tr("&Open"), this);
     loadFileAct->setShortcuts(QKeySequence::Open);
-    connect(loadFileAct, &QAction::triggered, this, &MainWindow::loadOfflineFile);
+    connect(loadFileAct, &QAction::triggered, this, &MainWindow::openLoadOfflineFileDialog);
 
     // 本质上就是把捕获的 pcap 文件移动到新路径
-    saveAct = new QAction(tr("&Dump File"), this);
+    saveAct = new QAction(tr("&Dump"), this);
     saveAct->setShortcuts(QKeySequence::SaveAs);
     connect(saveAct, &QAction::triggered, this, &MainWindow::saveAsPcap);
 
@@ -697,6 +708,28 @@ void MainWindow::initMenus()
     fileMenu = new QMenu(tr("&File"), this);
     fileMenu->setMinimumWidth(MENUBAT_ITEM_MIN_WIDTH);
     fileMenu->addAction(loadFileAct);
+
+    // 曾经打开过的文件
+    lastFiles = new QMenu(tr("&Recent Files"), this);
+    for (const auto& item : conf::instance().get_recent_files()) {
+        const auto act = new QAction(item.c_str());
+        act->setDisabled(file_not_exist(item));
+        lastFiles->addAction(act);
+
+        connect(act, &QAction::triggered, this, [item, this] {
+            this->loadOfflinePcap(item);
+        });
+    }
+
+    lastFiles->addSeparator();
+    const auto clearRecentAct = new QAction("&Clear Recents");
+    connect(clearRecentAct, &QAction::triggered, [this] {
+        conf::instance().clear_recent();
+    });
+
+    lastFiles->addAction(clearRecentAct);
+
+    fileMenu->addMenu(lastFiles);
     fileMenu->addAction(saveAct);
     fileMenu->addAction(saveAct);
     fileMenu->addSeparator();
