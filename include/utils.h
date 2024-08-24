@@ -3,6 +3,10 @@
 #include <iostream>
 #include <string>
 using namespace std;
+/**
+ * 检测文件是否不存在
+ */
+bool file_not_exist(const string& name);
 
 string format_timeval_to_string(const timeval&);
 

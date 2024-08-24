@@ -13,6 +13,7 @@
 
 #define SNAP_LEN 128 * 1024 * 1024
 #define PROMISC 1
+#define MENUBAT_ITEM_MIN_WIDTH 200
 
 QT_BEGIN_NAMESPACE
 
@@ -39,7 +40,8 @@ public:
     void resetCapture();
     void acceptPacket(int index, Packet* p) const;
     void initSlots();
-    void loadOfflineFile() const;
+    void loadOfflinePcap(string filename) const;
+    void openLoadOfflineFileDialog() const;
     void tableItemClicked(const QModelIndex& index);
     void toggleStartBtn();
     void initWidgets();
@@ -69,6 +71,8 @@ private:
     QMenu* fileMenu = nullptr;
     QMenu* helpMenu = nullptr;
     QMenu* windowMenu = nullptr;
+    QMenu* lastFiles = nullptr;
+    QAction* clearLastFiles = nullptr;
     QAction* loadFileAct = nullptr;
     QAction* saveAct = nullptr;
     QAction* dumpFilename = nullptr;

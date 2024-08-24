@@ -3,7 +3,13 @@
 
 #include <iostream>
 #include <sstream>
+#include <unistd.h>
 using namespace std;
+
+bool file_not_exist(const string& name)
+{
+    return access(name.c_str(), F_OK) != 0;
+}
 
 string format_timeval_to_string(const timeval& tv)
 {
