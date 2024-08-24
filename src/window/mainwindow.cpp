@@ -695,6 +695,7 @@ void MainWindow::initMenus()
     // 文件菜单
     // 如果 Action 在默认菜单列已经实现，则不会显示该 Action
     fileMenu = new QMenu(tr("&File"), this);
+    fileMenu->setMinimumWidth(MENUBAT_ITEM_MIN_WIDTH);
     fileMenu->addAction(loadFileAct);
     fileMenu->addAction(saveAct);
     fileMenu->addAction(saveAct);
@@ -703,12 +704,15 @@ void MainWindow::initMenus()
 
     // Help 在 Mac 下会被合并到默认菜单列
     helpMenu = new QMenu(tr("&Help"), this);
+    helpMenu->setMinimumWidth(MENUBAT_ITEM_MIN_WIDTH);
     helpMenu->addAction(aboutAct);
     helpMenu->addAction(aboutQtAct);
 
     windowMenu = new QMenu(tr("&Window"), this);
+    windowMenu->setMinimumWidth(MENUBAT_ITEM_MIN_WIDTH);
     windowMenu->addAction(statsAct);
 
     menuBar()->addMenu(fileMenu);
     menuBar()->addMenu(windowMenu);
+    menuBar()->addMenu(helpMenu);
 }
