@@ -1,6 +1,7 @@
 /cmake-build-debug
 /cmake-build-release
 /.idea
+/.cache
 WireDolphin.dmg
 
 CMakeLists.txt.user
