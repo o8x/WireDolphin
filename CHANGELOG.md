@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+- 引入 PcapPlusPlush 以支持 DPDK
+- 支持外挂采集数据的 Agent，通过 zmq 传输抓包数据
+- 分离前后端，QT 只做展示端
+- 流量分级（可接受，安全，未分级，不安全）
+- Top 主机
+- Top 应用
+- Top 会话
+- 活动流（应用，连接状态、类型，掩码等维度的筛选）
+- 主机监控
+- 网内扫描
+- 数据警告（流，主机，会话，主机监控，系统等维度）
+- 主机纳管（机器名，操作系统，网段，活动流，地理位置，评分等统计）
+- 接口流量记录
 - 统计视图（初步建设已完成，暂时搁置）
 - OOP with PImpl 改造
 - ICMP 解析

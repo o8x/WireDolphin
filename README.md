@@ -27,6 +27,27 @@
 </a>
 </p>
 
+## Features
+
+a Simple Wireshark Based on libpcap
+
+- Automatic scrolling of main table
+- Automatic record and restore the application position and size
+- Basic MenuBar view for stats only MacOS
+- Variable width and rich color of table and tree interface
+- Supports both IPv4 and v6
+- Various metrics for TCP/UDP/ARP/ICMP/HTTP packets
+- Data packet details of layer 2, layer 3 and layer 4
+- View for the payload on HEX/ASCII/Text
+- Export & Import for .pcap file
+- Signed dmg
+
+## Next Generation Features
+
+- distributed
+- introducing DPDK
+- like ntopng
+
 ## Reference
 
 - [Bug Tracker Project](https://github.com/users/o8x/projects/3)
