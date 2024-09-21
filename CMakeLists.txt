@@ -10,6 +10,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 # 生成编译数据库文件，Fleet 等编译器需要该文件
 # 直接生成 cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_TOOLCHAIN_FILE $ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
 
 # 无法自动加载时，设置 QT 目录
 #set(Qt6_DIR $ENV{HOME}/Qt6/6.7.2/macos/lib/cmake/Qt6)

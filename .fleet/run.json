@@ -1,0 +1,31 @@
+{
+    "configurations": [
+        {
+            "type": "command",
+            "name": "Install",
+            "program": "/opt/homebrew/bin/cmake",
+            "workingDir": ".",
+            "args": [
+                "-G Ninja",
+                "-S .",
+                "-DCMAKE_BUILD_TYPE=Debug", "-B cmake-build-debug"
+            ]
+        },
+        {
+            "type": "command",
+            "name": "Build",
+            "program": "/opt/homebrew/bin/cmake",
+            "workingDir": ".",
+            "args": [
+                "--build", "cmake-build-debug"
+            ]
+        },
+        {
+            "type": "command",
+            "name": "Run",
+            "program": "./WireDolphin",
+            "workingDir": "cmake-build-debug/WireDolphin.app/Contents/MacOS",
+            "dependsOn": ["Build"]
+        }
+    ]
+}
