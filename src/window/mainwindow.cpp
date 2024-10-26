@@ -2,6 +2,7 @@
 
 #include "conf.h"
 #include "interface.h"
+#include "locale.hpp"
 #include "packetsource.h"
 #include "ui_MainWindow.h"
 #include "utils.h"
@@ -105,7 +106,7 @@ bool MainWindow::event(QEvent* event)
 void MainWindow::initWindow()
 {
     QSystemTrayIcon* tray = new QSystemTrayIcon();
-    tray->setToolTip("WireDolphin");
+    tray->setToolTip(TL_APP_TITLE.c_str());
 
     const QIcon icon(":/icons/icon_32x32@2x.png");
     tray->setIcon(icon);
@@ -129,7 +130,7 @@ void MainWindow::captureInterfaceStarted(packetsource_state state)
     ui->interfaceList->setDisabled(true);
     ui->startBtn->setDisabled(false);
     ui->resetBtn->setDisabled(false);
-    ui->startBtn->setText("Stop");
+    ui->startBtn->setText(TL_STOP.c_str());
     ui->packetsTable->clearContents();
     ui->packetsTable->setRowCount(0);
     ui->hexTable->clearContents();
@@ -143,7 +144,7 @@ void MainWindow::captureInterfaceStopped(packetsource_state state) const
 {
     ui->interfaceList->setDisabled(false);
     ui->resetBtn->setDisabled(true);
-    ui->startBtn->setText("Start");
+    ui->startBtn->setText(TL_START.c_str());
     interfaceStatusLabel->setText(state.interface_name.append(": ").append(state.state).c_str());
 }
 
@@ -196,19 +197,19 @@ void MainWindow::initWidgets()
     ui->statusBar->addWidget(captureStatusLabel);
     ui->startBtn->setDisabled(true);
     ui->resetBtn->setDisabled(true);
-    ui->bpfEditor->setPlaceholderText(" filter expression");
+    ui->bpfEditor->setPlaceholderText(TL_FILTER_EXPRESSION.c_str());
 
     const QStringList title = {
-        "NO.",
-        "Time",
-        "Source",
-        "Destination",
-        "Protocol",
-        "Len",
-        "Info",
+        TL_NO.c_str(),
+        TL_TIME.c_str(),
+        TL_SOURCE.c_str(),
+        TL_DESTINATION.c_str(),
+        TL_PROTOCOL.c_str(),
+        TL_LENGTH.c_str(),
+        TL_INFO.c_str(),
     };
     ui->packetsTable->setColumnCount(title.length());
-    ui->packetsTable->setFont(QFont("", 11, QFont::Normal));
+    ui->packetsTable->setFont(QFont("PingFang", 11, QFont::Normal));
     ui->packetsTable->setRowCount(0);
     ui->packetsTable->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
     ui->packetsTable->setColumnWidth(0, 50);
@@ -227,10 +228,11 @@ void MainWindow::initWidgets()
 
     // 树视图
     ui->layerTree->expandAll();
-    ui->layerTree->setHeaderLabel("layers");
+    ui->layerTree->setHeaderLabel(TL_LAYERS.c_str());
 
     // hex 查看器
     const int colCount = 17;
+    ui->hexTable->setWindowTitle(TL_HEX_VIEW.c_str());
     ui->hexTable->setRowCount(0);
     ui->hexTable->setColumnCount(colCount);
     ui->hexTable->setFont(QFont(HEX_TABLE_FONT_FAMILY, HEX_TABLE_FONT_SIZE, QFont::Normal));
@@ -258,6 +260,10 @@ void MainWindow::initWidgets()
     for (int i = 0; i < colCount; i++) {
         ui->asciiViewTable->setColumnWidth(i, HEX_TABLE_SIDE_LENGTH / 2);
     }
+
+    ui->loadFileBtn->setText(TL_LOAD_FILE.c_str());
+    ui->startBtn->setText(TL_START.c_str());
+    ui->resetBtn->setText(TL_RESET.c_str());
 }
 
 void MainWindow::acceptPacket(const int row, Packet* packet) const
@@ -317,7 +323,7 @@ void MainWindow::loadOfflinePcap(string filename) const
     char ebuf[PCAP_ERRBUF_SIZE];
     pcap_t* interface = open_offline_pcap(filename.c_str(), 0, ebuf);
     if (interface == nullptr) {
-        QMessageBox::warning(ui->loadFileBtn, "Warning", ebuf);
+        QMessageBox::warning(ui->loadFileBtn, TL_WARNING.c_str(), ebuf);
         return;
     }
 
@@ -332,7 +338,7 @@ void MainWindow::loadOfflinePcap(string filename) const
 void MainWindow::openLoadOfflineFileDialog() const
 {
     QString filename = QFileDialog::getOpenFileName(
-        ui->loadFileBtn, "Select a pcap file",
+        ui->loadFileBtn, TL_SELECT_PCAP_FILE.c_str(),
         QDir::homePath(), "pcap file(*.pcap *.pcapng)");
 
     if (filename.isEmpty()) {
@@ -381,153 +387,152 @@ void MainWindow::tableItemClicked(const QModelIndex& index)
     delete applicationTree;
 
     frame = new QTreeWidgetItem(ui->layerTree);
-    frame->setText(0, "frame");
+    frame->setText(0, TL_FRAME.c_str());
     frame->setExpanded(true);
     frame->addChildren({
-        new QTreeWidgetItem(QStringList(string("timestamp: ").append(packet->get_time()).c_str())),
-        new QTreeWidgetItem(QStringList(string("length: ").append(to_string(packet->get_len())).c_str())),
-        new QTreeWidgetItem(QStringList(string("ethernet length: ").append(to_string(14)).c_str())),
-        new QTreeWidgetItem(QStringList(string("ipv4 length: ").append(to_string(packet->get_len() - 14)).c_str())),
+        new QTreeWidgetItem(QStringList(string(TL_COLON(TL_TIMESTAMP)).append(packet->get_time()).c_str())),
+        new QTreeWidgetItem(QStringList(string(TL_COLON(TL_LENGTH)).append(to_string(packet->get_len())).c_str())),
+        new QTreeWidgetItem(QStringList(string(TL_COLON(TL_ETHERNET_LENGTH)).append(to_string(14)).c_str())),
+        new QTreeWidgetItem(QStringList(string(TL_COLON(TL_IPV4_LENGTH)).append(to_string(packet->get_len() - 14)).c_str())),
     });
 
     datalinkTree = new QTreeWidgetItem(ui->layerTree);
-    datalinkTree->setText(0, "data link");
+    datalinkTree->setText(0, TL_DATA_LINK.c_str());
     datalinkTree->setExpanded(true);
     datalinkTree->addChildren({
-        new QTreeWidgetItem(QStringList(string("source: ").append(packet->get_link_src()).c_str())),
-        new QTreeWidgetItem(QStringList(string("destination: ").append(packet->get_link_dst()).c_str())),
+        new QTreeWidgetItem(QStringList(string(TL_COLON(TL_SOURCE)).append(packet->get_link_src()).c_str())),
+        new QTreeWidgetItem(QStringList(string(TL_COLON(TL_DESTINATION)).append(packet->get_link_dst()).c_str())),
         new QTreeWidgetItem(QStringList(
-            string("type: ").append(packet->get_type()).append("(hex:").append(to_string(packet->get_type_flag())).append(")").c_str())),
+            string(TL_COLON(TL_TYPE)).append(packet->get_type()).append(string("(").append(TL_HEX)).append(to_string(packet->get_type_flag())).append(")").c_str())),
     });
 
     networkTree = new QTreeWidgetItem(ui->layerTree);
-    networkTree->setText(0, "network");
+    networkTree->setText(0, TL_NETWORK.c_str());
     networkTree->setExpanded(true);
     if (packet->get_type_flag() == 0x0806) {
         arp_header* arp = packet->get_arp();
         networkTree->addChildren({
             new QTreeWidgetItem(
-                QStringList(string("protocol: arp").c_str())),
+                QStringList(TL_CONCAT(TL_PROTOCOL, ": ARP").c_str())),
             new QTreeWidgetItem(
-                QStringList(string("hardware type").append(to_string(arp->hardware_type)).c_str())),
+                QStringList(TL_COLON(TL_HARDWARE_TYPE).append(to_string(arp->hardware_type)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("protocol type").append(to_string(arp->protocol_type)).c_str())),
+                QStringList(TL_COLON(TL_PROTOCOL_TYPE).append(to_string(arp->protocol_type)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("hardware length").append(to_string(arp->hardware_length)).c_str())),
+                QStringList(TL_COLON(TL_HARDWARE_LENGTH).append(to_string(arp->hardware_length)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("protocol length").append(to_string(arp->protocol_length)).c_str())),
+                QStringList(TL_COLON(TL_PROTOCOL_LENGTH).append(to_string(arp->protocol_length)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("op").append(to_string(arp->op)).c_str())),
+                QStringList(TL_COLON(TL_OP).append(to_string(arp->op)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("sender ethernet").append(bytes_to_mac(arp->sender_ethernet)).c_str())),
+                QStringList(TL_COLON(TL_SENDER_ETHERNET).append(bytes_to_mac(arp->sender_ethernet)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("sender host").append(bytes_to_ip(arp->sender_host)).c_str())),
+                QStringList(TL_COLON(TL_SENDER_HOST).append(bytes_to_ip(arp->sender_host)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("destination ethernet").append(bytes_to_mac(arp->destination_ethernet)).c_str())),
+                QStringList(TL_COLON(TL_DESTINATION_ETHERNET).append(bytes_to_mac(arp->destination_ethernet)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("destination host").append(bytes_to_ip(arp->destination_host)).c_str())),
+                QStringList(TL_COLON(TL_DESTINATION_HOST).append(bytes_to_ip(arp->destination_host)).c_str())),
         });
     } else if (packet->get_type_flag() == 0x0800) {
         if (packet->get_ip_version() == 6) {
             ipv6_header* v6 = packet->get_ipv6();
             networkTree->addChildren({
                 new QTreeWidgetItem(
-                    QStringList(string("protocol: ip").c_str())),
+                    QStringList(TL_CONCAT(TL_PROTOCOL, ": IP").c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("version: v6").c_str())),
+                    QStringList(TL_CONCAT(TL_VERSION, ": v6").c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("source: ").append(packet->get_host_src()).c_str())),
+                    QStringList(TL_COLON(TL_SOURCE).append(packet->get_host_src()).c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("destination: ").append(packet->get_host_dst()).c_str())),
-                new QTreeWidgetItem(QStringList(string("class: ").append("[x] analysis not supported").c_str())),
-                new QTreeWidgetItem(QStringList(string("flow label: ").append("[x] analysis not supported").c_str())),
+                    QStringList(TL_COLON(TL_DESTINATION).append(packet->get_host_dst()).c_str())),
+                new QTreeWidgetItem(QStringList(TL_COLON(TL_CLASS).append(TL_ANALYSIS_NOT_SUPPORTED).c_str())),
+                new QTreeWidgetItem(QStringList(TL_COLON(TL_FLOW_LABEL).append(TL_ANALYSIS_NOT_SUPPORTED).c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("next header: ").append(to_string(v6->next_header)).c_str())),
+                    QStringList(TL_COLON(TL_NEXT_HEADER).append(to_string(v6->next_header)).c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("hop limit: ").append(to_string(v6->hop_limit)).c_str())),
+                    QStringList(TL_COLON(TL_HOP_LIMIT).append(to_string(v6->hop_limit)).c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("payload length: ").append(to_string(v6->payload_length)).c_str())),
-                new QTreeWidgetItem(QStringList(string("options: ").append("[x] analysis not supported").c_str())),
+                    QStringList(TL_COLON(TL_PAYLOAD_LENGTH).append(to_string(v6->payload_length)).c_str())),
+                new QTreeWidgetItem(QStringList(TL_COLON(TL_OPTIONS).append(TL_ANALYSIS_NOT_SUPPORTED).c_str())),
             });
         } else {
             ipv4_header* v4 = packet->get_ipv4();
             networkTree->addChildren({
                 new QTreeWidgetItem(
-                    QStringList(string("protocol: ip").c_str())),
+                    QStringList(TL_CONCAT(TL_PROTOCOL, ": IP").c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("version: v").append(to_string((v4->version_ihl & 0xf0) >> 4)).c_str())),
+                    QStringList(TL_CONCAT(TL_VERSION, ": v").append(to_string((v4->version_ihl & 0xf0) >> 4)).c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("source: ").append(packet->get_host_src()).c_str())),
+                    QStringList(TL_COLON(TL_SOURCE).append(packet->get_host_src()).c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("destination: ").append(packet->get_host_dst()).c_str())),
+                    QStringList(TL_COLON(TL_DESTINATION).append(packet->get_host_dst()).c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("header length: ").append(to_string((v4->version_ihl & 0xf) * 4)).c_str())),
+                    QStringList(TL_COLON(TL_HEADER_LENGTH).append(to_string((v4->version_ihl & 0xf) * 4)).c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("service type: ").append(to_string(v4->type_of_service)).c_str())),
+                    QStringList(TL_COLON(TL_SERVICE_TYPE).append(to_string(v4->type_of_service)).c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("identifier: ").append(to_string(v4->identification)).c_str())),
+                    QStringList(TL_COLON(TL_IDENTIFIER).append(to_string(v4->identification)).c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("fragment_offset: ").append(to_string(v4->flags_fragment)).c_str())),
+                    QStringList(TL_COLON(TL_FRAGMENT_OFFSET).append(to_string(v4->flags_fragment)).c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("time to live: ").append(to_string(v4->time_to_live)).c_str())),
+                    QStringList(TL_COLON(TL_TIME_TO_LIVE).append(to_string(v4->time_to_live)).c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("protocol: ").append(to_string(v4->protocol)).c_str())),
+                    QStringList(TL_COLON(TL_PROTOCOL).append(to_string(v4->protocol)).c_str())),
                 new QTreeWidgetItem(
-                    QStringList(string("checksum: ").append(to_string(v4->header_checksum)).c_str())),
-                new QTreeWidgetItem(QStringList(string("options: ").append("[x] analysis not supported").c_str())),
+                    QStringList(TL_COLON(TL_CHECKSUM).append(to_string(v4->header_checksum)).c_str())),
+                new QTreeWidgetItem(QStringList(TL_COLON(TL_OPTIONS).append(TL_ANALYSIS_NOT_SUPPORTED).c_str())),
             });
         }
     }
 
     transportTree = new QTreeWidgetItem(ui->layerTree);
-    transportTree->setText(0, "transport");
+    transportTree->setText(0, TL_TRANSPORT.c_str());
     transportTree->setExpanded(true);
 
     if (auto tcp = packet->get_tcp(); tcp != nullptr) {
         transportTree->addChildren({
-            new QTreeWidgetItem(QStringList(string("protocol: tcp").c_str())),
-            new QTreeWidgetItem(QStringList(string("source port: ").append(to_string(tcp->src_port)).c_str())),
-            new QTreeWidgetItem(QStringList(string("destination port: ").append(to_string(tcp->dst_port)).c_str())),
-            new QTreeWidgetItem(QStringList(string("seq number: ").append(to_string(tcp->seq_number)).c_str())),
-            new QTreeWidgetItem(QStringList(string("ack: ").append(to_string(tcp->ack_number)).c_str())),
+            new QTreeWidgetItem(QStringList(TL_CONCAT(TL_PROTOCOL, ": TCP").c_str())),
+            new QTreeWidgetItem(QStringList(TL_COLON(TL_SOURCE_PORT).append(to_string(tcp->src_port)).c_str())),
+            new QTreeWidgetItem(QStringList(TL_COLON(TL_DESTINATION_PORT).append(to_string(tcp->dst_port)).c_str())),
+            new QTreeWidgetItem(QStringList(TL_COLON(TL_SEQ_NUMBER).append(to_string(tcp->seq_number)).c_str())),
+            new QTreeWidgetItem(QStringList(TL_COLON(TL_ACK_NO).append(to_string(tcp->ack_number)).c_str())),
+            new QTreeWidgetItem(QStringList(TL_COLON(TL_DATA_OFFSET).append(to_string(packet->get_tcp_header_len())).c_str())),
+            new QTreeWidgetItem(QStringList(TL_COLON(TL_WINDOW).append(to_string(tcp->window)).c_str())),
+            new QTreeWidgetItem(QStringList(TL_COLON(TL_CHECKSUM).append(to_string(tcp->checksum)).c_str())),
+            new QTreeWidgetItem(QStringList(TL_COLON(TL_URGENT).append(to_string(tcp->urgent)).c_str())),
+            new QTreeWidgetItem(QStringList(TL_COLON(TL_FLAGS).c_str())),
             new QTreeWidgetItem(
-                QStringList(string("data offset: ").append(to_string(packet->get_tcp_header_len())).c_str())),
-            new QTreeWidgetItem(QStringList(string("window: ").append(to_string(tcp->window)).c_str())),
-            new QTreeWidgetItem(QStringList(string("checksum: ").append(to_string(tcp->checksum)).c_str())),
-            new QTreeWidgetItem(QStringList(string("urgent: ").append(to_string(tcp->urgent)).c_str())),
-            new QTreeWidgetItem(QStringList(string("flags:").c_str())),
+                QStringList(string(" -").append(TL_CONCAT(TL_CWR, " ")).append(to_string(packet->get_tcp_flags()->CWR)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string(" - CWR: ").append(to_string(packet->get_tcp_flags()->CWR)).c_str())),
+                QStringList(string(" -").append(TL_CONCAT(TL_ECE, " ")).append(to_string(packet->get_tcp_flags()->ECE)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string(" - ECE: ").append(to_string(packet->get_tcp_flags()->ECE)).c_str())),
+                QStringList(string(" -").append(TL_CONCAT(TL_URG, " ")).append(to_string(packet->get_tcp_flags()->URG)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string(" - URG: ").append(to_string(packet->get_tcp_flags()->URG)).c_str())),
+                QStringList(string(" -").append(TL_CONCAT(TL_ACK, " ")).append(to_string(packet->get_tcp_flags()->ACK)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string(" - ACK: ").append(to_string(packet->get_tcp_flags()->ACK)).c_str())),
+                QStringList(string(" -").append(TL_CONCAT(TL_PSH, " ")).append(to_string(packet->get_tcp_flags()->PSH)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string(" - PSH: ").append(to_string(packet->get_tcp_flags()->PSH)).c_str())),
+                QStringList(string(" -").append(TL_CONCAT(TL_RST, " ")).append(to_string(packet->get_tcp_flags()->RST)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string(" - RST: ").append(to_string(packet->get_tcp_flags()->RST)).c_str())),
+                QStringList(string(" -").append(TL_CONCAT(TL_SYN, " ")).append(to_string(packet->get_tcp_flags()->SYN)).c_str())),
             new QTreeWidgetItem(
-                QStringList(string(" - SYN: ").append(to_string(packet->get_tcp_flags()->SYN)).c_str())),
-            new QTreeWidgetItem(
-                QStringList(string(" - FIN: ").append(to_string(packet->get_tcp_flags()->FIN)).c_str())),
+                QStringList(string(" -").append(TL_CONCAT(TL_FIN, " ")).append(to_string(packet->get_tcp_flags()->FIN)).c_str())),
         });
     } else if (auto udp = packet->get_udp(); udp != nullptr) {
         transportTree->addChildren({
-            new QTreeWidgetItem(QStringList(string("protocol: udp").c_str())),
-            new QTreeWidgetItem(QStringList(string("source port: ").append(to_string(udp->src_port)).c_str())),
-            new QTreeWidgetItem(QStringList(string("destination port: ").append(to_string(udp->dst_port)).c_str())),
-            new QTreeWidgetItem(QStringList(string("total length: ").append(to_string(udp->total_length)).c_str())),
-            new QTreeWidgetItem(QStringList(string("checksum: ").append(to_string(udp->checksum)).c_str())),
+            new QTreeWidgetItem(QStringList(TL_CONCAT(TL_PROTOCOL, ": UDP").c_str())),
+            new QTreeWidgetItem(QStringList(TL_COLON(TL_SOURCE_PORT).append(to_string(udp->src_port)).c_str())),
+            new QTreeWidgetItem(QStringList(TL_COLON(TL_DESTINATION_PORT).append(to_string(udp->dst_port)).c_str())),
+            new QTreeWidgetItem(QStringList(TL_COLON(TL_TOTAL_LENGTH).append(to_string(udp->total_length)).c_str())),
+            new QTreeWidgetItem(QStringList(TL_COLON(TL_CHECKSUM).append(to_string(udp->checksum)).c_str())),
         });
     }
 
     applicationTree = new QTreeWidgetItem(ui->layerTree);
-    applicationTree->setText(0, "application");
+    applicationTree->setText(0, TL_APPLICATION.c_str());
     applicationTree->setExpanded(true);
     applicationTree->addChildren({
-        new QTreeWidgetItem(QStringList(string("[x] analysis not supported").c_str())),
+        new QTreeWidgetItem(QStringList(string(TL_ANALYSIS_NOT_SUPPORTED).c_str())),
     });
 
     // hex 查看器
@@ -625,7 +630,7 @@ void MainWindow::initInterfaceList()
         return;
     }
 
-    ui->interfaceList->addItem(QString::fromStdString("Choose interface"));
+    ui->interfaceList->addItem(QString::fromStdString(TL_CHOOSE_INTERFACE));
     if (allDevs == nullptr) {
         return;
     }
@@ -680,36 +685,36 @@ void MainWindow::saveAsPcap()
 void MainWindow::initMenus()
 {
     // 加载本地 pcap 文件
-    loadFileAct = new QAction(tr("&Open"), this);
+    loadFileAct = new QAction(TL_OPEN.c_str(), this);
     loadFileAct->setShortcuts(QKeySequence::Open);
     connect(loadFileAct, &QAction::triggered, this, &MainWindow::openLoadOfflineFileDialog);
 
     // 本质上就是把捕获的 pcap 文件移动到新路径
-    saveAct = new QAction(tr("&Dump"), this);
+    saveAct = new QAction(TL_DUMP.c_str(), this);
     saveAct->setShortcuts(QKeySequence::SaveAs);
     connect(saveAct, &QAction::triggered, this, &MainWindow::saveAsPcap);
 
-    dumpFilename = new QAction("Wait Start.", this);
+    dumpFilename = new QAction(TL_WAIT_START.c_str(), this);
     dumpFilename->setDisabled(true);
 
     // 打开统计视图
-    statsAct = new QAction(tr("&Statistics"), this);
+    statsAct = new QAction(TL_STATISTICS.c_str(), this);
     connect(statsAct, &QAction::triggered, this, &MainWindow::activateStatsWindow);
 
     // 两个 About
-    aboutAct = new QAction(tr("&About"), this);
+    aboutAct = new QAction(TL_ABOUT.c_str(), this);
     connect(aboutAct, &QAction::triggered, this, &MainWindow::about);
-    aboutQtAct = new QAction(tr("About &Qt"), this);
+    aboutQtAct = new QAction(TL_CONCAT(TL_ABOUT, " QT").c_str(), this);
     connect(aboutQtAct, &QAction::triggered, QApplication::aboutQt);
 
     // 文件菜单
     // 如果 Action 在默认菜单列已经实现，则不会显示该 Action
-    fileMenu = new QMenu(tr("&File"), this);
+    fileMenu = new QMenu(TL_FILE.c_str(), this);
     fileMenu->setMinimumWidth(MENUBAT_ITEM_MIN_WIDTH);
     fileMenu->addAction(loadFileAct);
 
     // 曾经打开过的文件
-    lastFiles = new QMenu(tr("&Recent Files"), this);
+    lastFiles = new QMenu(TL_RECENT_FILES.c_str(), this);
     for (const auto& item : conf::instance().get_recent_files()) {
         const auto act = new QAction(item.c_str());
         act->setDisabled(file_not_exist(item));
@@ -721,7 +726,7 @@ void MainWindow::initMenus()
     }
 
     lastFiles->addSeparator();
-    const auto clearRecentAct = new QAction("&Clear Recents");
+    const auto clearRecentAct = new QAction(TL_CLEAR_RECENT.c_str());
     connect(clearRecentAct, &QAction::triggered, [this] {
         conf::instance().clear_recent();
     });
@@ -735,12 +740,12 @@ void MainWindow::initMenus()
     fileMenu->addAction(dumpFilename);
 
     // Help 在 Mac 下会被合并到默认菜单列
-    helpMenu = new QMenu(tr("&Help"), this);
+    helpMenu = new QMenu(TL_HELP.c_str(), this);
     helpMenu->setMinimumWidth(MENUBAT_ITEM_MIN_WIDTH);
     helpMenu->addAction(aboutAct);
     helpMenu->addAction(aboutQtAct);
 
-    windowMenu = new QMenu(tr("&Window"), this);
+    windowMenu = new QMenu(TL_WINDOW.c_str(), this);
     windowMenu->setMinimumWidth(MENUBAT_ITEM_MIN_WIDTH);
     windowMenu->addAction(statsAct);
 

@@ -1,4 +1,5 @@
 #include "conf.h"
+#include "locale.hpp"
 
 #include <QApplication>
 #include <fstream>
@@ -43,6 +44,8 @@ int main(int argc, char* argv[])
             throw runtime_error(std::format("Core Profile is corrupt, Repair or remove \"{}\".", conf::core_config_name()));
         }
 
+        lc::Locale::setLocale(lc::LOCAL_ZH_CN);
+
         initGlog(argv[0]);
 
         MainWindow window;
@@ -54,7 +57,7 @@ int main(int argc, char* argv[])
         window.move(winConf->FirstChildElement("PosX")->IntText(), winConf->FirstChildElement("PosY")->IntText());
         // 在 Mac 下合并标题和工具栏
         window.setUnifiedTitleAndToolBarOnMac(true);
-        window.setWindowTitle("WireDolphin");
+        window.setWindowTitle(TL_APP_TITLE.c_str());
         window.setWindowIcon(QIcon(":/icons/icon_128x128@2x.png"));
         window.show();
 

@@ -58,6 +58,7 @@ add_executable(${PROJECT_NAME}
         include/dissectors/icmp.h
         src/dissectors/icmp.cpp
         resources/resources.qrc
+        include/locale.hpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
