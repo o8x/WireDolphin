@@ -54,7 +54,8 @@ int main(int argc, char* argv[])
         window.move(winConf->FirstChildElement("PosX")->IntText(), winConf->FirstChildElement("PosY")->IntText());
         // 在 Mac 下合并标题和工具栏
         window.setUnifiedTitleAndToolBarOnMac(true);
-        window.setWindowTitle("🐬 WireDolphin");
+        window.setWindowTitle("WireDolphin");
+        window.setWindowIcon(QIcon(":/icons/icon_128x128@2x.png"));
         window.show();
 
         return QApplication::exec();

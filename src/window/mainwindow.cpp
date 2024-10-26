@@ -107,8 +107,7 @@ void MainWindow::initWindow()
     QSystemTrayIcon* tray = new QSystemTrayIcon();
     tray->setToolTip("WireDolphin");
 
-    QIcon icon;
-    icon.addPixmap(QWidget().style()->standardIcon(QStyle::SP_DriveNetIcon).pixmap(QSize(16, 16)));
+    const QIcon icon(":/icons/icon_32x32@2x.png");
     tray->setIcon(icon);
 
     trayIcon = new TrayIcon(tray, statsWindow);
