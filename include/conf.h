@@ -23,4 +23,5 @@ public:
     void append_recent_file(const std::string& name) const;
     static void create_core_config();
     [[nodiscard]] tinyxml2::XMLDocument* core() const;
+    static tinyxml2::XMLElement* preferences(const std::string& name);
 };

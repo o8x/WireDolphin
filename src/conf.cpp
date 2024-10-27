@@ -2,6 +2,7 @@
 #include "utils.h"
 #include <QMessageBox>
 #include <__filesystem/operations.h>
+#include <glog/logging.h>
 #include <qstandardpaths.h>
 #define CORE_CONFIG_FILENAME "Core.xml"
 
@@ -18,6 +19,8 @@ conf::conf()
     if (code != tinyxml2::XML_SUCCESS) {
         throw std::runtime_error(std::format("Load Core Profile Failed, code: {}", code));
     }
+
+    LOG(INFO) << "with config file: " << core_config_name().c_str();
 }
 
 void conf::update_core() const
@@ -149,7 +152,11 @@ void conf::create_core_config()
     window->InsertNewChildElement("PosX")->SetText(50);
     window->InsertNewChildElement("PosY")->SetText(50);
 
+    auto* preferences = doc.NewElement("Preferences");
+    window->InsertNewChildElement("Language")->SetText(0);
+
     doc.InsertEndChild(doc.NewElement("RecentFileList"));
+    doc.InsertEndChild(preferences);
     doc.InsertEndChild(logger);
     doc.InsertEndChild(window);
     doc.SaveFile(core_config_name().c_str());
@@ -158,4 +165,9 @@ void conf::create_core_config()
 tinyxml2::XMLDocument* conf::core() const
 {
     return core_;
+}
+
+tinyxml2::XMLElement* conf::preferences(const std::string& name){
+    tinyxml2::XMLElement* element = instance().core()->FirstChildElement("Preferences");
+    return element->FirstChildElement(name.c_str());
 }

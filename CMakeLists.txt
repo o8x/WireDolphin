@@ -59,6 +59,9 @@ add_executable(${PROJECT_NAME}
         src/dissectors/icmp.cpp
         resources/resources.qrc
         include/locale.hpp
+        include/preferenceswindow.h
+        src/window/preferences/preferenceswindow.cpp
+        src/window/preferences/preferenceswindow.ui
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
