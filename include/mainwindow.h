@@ -10,6 +10,7 @@
 #include "packetsource.h"
 #include "statswindow.h"
 #include "trayicon.h"
+#include <preferenceswindow.h>
 
 #define SNAP_LEN 128 * 1024 * 1024
 #define PROMISC 1
@@ -68,6 +69,7 @@ private:
     QMenu* hexTableMenu = nullptr;
     TrayIcon* trayIcon = nullptr;
     StatsWindow* statsWindow = nullptr;
+    PreferencesWindow preferencesWindow;
     QMenu* fileMenu = nullptr;
     QMenu* helpMenu = nullptr;
     QMenu* windowMenu = nullptr;
@@ -79,4 +81,6 @@ private:
     QAction* aboutAct = nullptr;
     QAction* statsAct = nullptr;
     QAction* aboutQtAct = nullptr;
+    QAction* clearRecentAction = nullptr;
+    QAction* preferencesAction = nullptr;
 };

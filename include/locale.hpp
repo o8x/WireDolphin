@@ -1,13 +1,15 @@
 #pragma once
 
-#include <iostream>
+#include <map>
 #include <unordered_map>
 
 #define _(name) lc::Locale::translate(name)
-#define TL_COLON(s) string(s).append(": ")
-#define TL_CONCAT(s, s2) string(s).append(s2)
+#define TL_COLON(s) std::string(s).append(": ")
+#define TL_CONCAT(s, s2) std::string(s).append(s2)
 
 #define TL_APP_TITLE _("app:title")
+#define TL_PREFERENCES _("Preferences")
+#define TL_SNIFFER _("Sniffer")
 #define TL_HEX _("hex")
 #define TL_HEX_VIEW _("Hex View")
 #define TL_ASCII_VIEW _("ASCII View")
@@ -26,6 +28,7 @@
 #define TL_LENGTH _("length")
 #define TL_INFO _("Info")
 #define TL_LAYERS _("layers")
+#define TL_LANGUAGE _("language")
 #define TL_WARNING _("Warning")
 #define TL_FRAME _("frame")
 #define TL_TRANSPORT _("transport")
@@ -99,6 +102,11 @@ enum Locales {
     LOCAL_ZH_CN,
 };
 
+inline std::map<Locales, std::string> languages = {
+    { LOCAL_ALL, "en_US" },
+    { LOCAL_ZH_CN, "zh_CN" },
+};
+
 struct Translation {
     std::string en_US;
     std::string zh_CN;
@@ -109,6 +117,8 @@ private:
     Locales lc = LOCAL_ALL;
 
     std::unordered_map<std::string, Translation> locals = {
+        { "Sniffer", { "Sniffer", "嗅探" } },
+        { "Preferences", { "Preferences", "偏好配置" } },
         { "Open", { "Open", "打开" } },
         { "Dump", { "Dump", "转储" } },
         { "Statistics", { "Statistics", "统计" } },
@@ -133,6 +143,7 @@ private:
         { "hex", { "hex", "十六进制值" } },
         { "filter expression", { "filter expression", "过滤表达式" } },
         { "Info", { "Info", "信息" } },
+        { "language", { "language", "语言" } },
         { "layers", { "layers", "层信息" } },
         { "Warning", { "Warning", "警告" } },
         { "frame", { "frame", "网络帧" } },
@@ -245,4 +256,3 @@ public:
 };
 
 };
-

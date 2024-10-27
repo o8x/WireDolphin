@@ -71,6 +71,8 @@ MainWindow::~MainWindow()
     delete loadFileAct;
     delete aboutAct;
     delete aboutQtAct;
+    delete preferencesAction;
+    delete clearRecentAction;
     delete lastFiles;
     delete clearLastFiles;
 }
@@ -264,6 +266,8 @@ void MainWindow::initWidgets()
     ui->loadFileBtn->setText(TL_LOAD_FILE.c_str());
     ui->startBtn->setText(TL_START.c_str());
     ui->resetBtn->setText(TL_RESET.c_str());
+
+    this->preferencesWindow.setWindowTitle(TL_PREFERENCES.c_str());
 }
 
 void MainWindow::acceptPacket(const int row, Packet* packet) const
@@ -726,12 +730,12 @@ void MainWindow::initMenus()
     }
 
     lastFiles->addSeparator();
-    const auto clearRecentAct = new QAction(TL_CLEAR_RECENT.c_str());
-    connect(clearRecentAct, &QAction::triggered, [this] {
+    clearRecentAction = new QAction(TL_CLEAR_RECENT.c_str());
+    connect(clearRecentAction, &QAction::triggered, [this] {
         conf::instance().clear_recent();
     });
 
-    lastFiles->addAction(clearRecentAct);
+    lastFiles->addAction(clearRecentAction);
 
     fileMenu->addMenu(lastFiles);
     fileMenu->addAction(saveAct);
@@ -744,6 +748,16 @@ void MainWindow::initMenus()
     helpMenu->setMinimumWidth(MENUBAT_ITEM_MIN_WIDTH);
     helpMenu->addAction(aboutAct);
     helpMenu->addAction(aboutQtAct);
+
+    preferencesAction = new QAction("Preferences");
+    preferencesAction->setMenuRole(QAction::PreferencesRole);
+    connect(preferencesAction, &QAction::triggered, [this] {
+        preferencesWindow.raise();
+        preferencesWindow.show();
+        preferencesWindow.activateWindow();
+    });
+
+    helpMenu->addAction(preferencesAction);
 
     windowMenu = new QMenu(TL_WINDOW.c_str(), this);
     windowMenu->setMinimumWidth(MENUBAT_ITEM_MIN_WIDTH);

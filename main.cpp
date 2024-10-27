@@ -44,7 +44,8 @@ int main(int argc, char* argv[])
             throw runtime_error(std::format("Core Profile is corrupt, Repair or remove \"{}\".", conf::core_config_name()));
         }
 
-        lc::Locale::setLocale(lc::LOCAL_ZH_CN);
+        // 设置语言
+        lc::Locale::setLocale(static_cast<lc::Locales>(conf::preferences("Language")->IntText()));
 
         initGlog(argv[0]);
 
