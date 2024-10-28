@@ -7,6 +7,11 @@
 #define TL_COLON(s) std::string(s).append(": ")
 #define TL_CONCAT(s, s2) std::string(s).append(s2)
 
+#define TL_ON _("on")
+#define TL_OFF _("off")
+#define TL_WAITING _("waiting")
+#define TL_CAPTURED _("captured")
+#define TL_DROPPED _("dropped")
 #define TL_APP_TITLE _("app:title")
 #define TL_PREFERENCES _("Preferences")
 #define TL_SNIFFER _("Sniffer")
@@ -117,6 +122,11 @@ private:
     Locales lc = LOCAL_ALL;
 
     std::unordered_map<std::string, Translation> locals = {
+        { "off", { "off", "已关闭" } },
+        { "on", { "on", "运行中" } },
+        { "waiting", { "waiting", "等待中" } },
+        { "dropped", { "dropped", "已丢弃" } },
+        { "captured", { "captured", "已捕获" } },
         { "Sniffer", { "Sniffer", "嗅探" } },
         { "Preferences", { "Preferences", "偏好配置" } },
         { "Open", { "Open", "打开" } },

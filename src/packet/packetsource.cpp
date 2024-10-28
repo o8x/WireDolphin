@@ -7,6 +7,7 @@
 #include "dissectors/tcp.h"
 #include "dissectors/udp.h"
 #include "interface.h"
+#include "locale.hpp"
 #include "utils.h"
 #include <QtCore/qcoreapplication.h>
 #include <__filesystem/operations.h>
@@ -188,7 +189,7 @@ void PacketSource::capture_packet()
 
     emit listen_started({ .dump_filename = dump_filename,
         .interface_name = name,
-        .state = "on" });
+        .state = TL_ON });
 
     while (true) {
         if (!running || this->interface == nullptr) {
@@ -217,7 +218,7 @@ void PacketSource::capture_packet()
 
     emit listen_stopped({ .dump_filename = dump_filename,
         .interface_name = name,
-        .state = "off" });
+        .state = TL_OFF });
 }
 
 void PacketSource::dump_flush(const pcap_pkthdr* h, const u_char* sp) const

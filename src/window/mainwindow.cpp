@@ -193,7 +193,7 @@ void MainWindow::initWidgets()
     ui->hexSplitter->setStretchFactor(0, 2);
     ui->hexSplitter->setStretchFactor(1, 1);
 
-    captureStatusLabel->setText("waiting...");
+    captureStatusLabel->setText(TL_CONCAT(TL_WAITING, "...").c_str());
 
     ui->statusBar->addWidget(interfaceStatusLabel);
     ui->statusBar->addWidget(captureStatusLabel);
@@ -366,7 +366,7 @@ void MainWindow::updateMajorView(size_t period_average, size_t sum_capture) cons
     pcap_stat stats {};
     pcap_stats(packetSource->get_interface(), &stats);
 
-    string msg = std::format("captured: {} droped: {}", count, stats.ps_drop);
+    string msg = std::format("{}: {} {}: {}", TL_CAPTURED, count, TL_DROPPED, stats.ps_drop);
     captureStatusLabel->setText(msg.c_str());
 
     // 悬浮气泡
