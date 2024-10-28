@@ -87,17 +87,15 @@ void MainWindow::closeEvent(QCloseEvent* event)
 bool MainWindow::event(QEvent* event)
 {
     if (event->type() == QEvent::Move) {
-        auto winConf = conf::instance().core()->FirstChildElement("Window");
-        winConf->FirstChildElement("PosX")->SetText(this->geometry().x());
-        winConf->FirstChildElement("PosY")->SetText(this->geometry().y());
+        conf::window("PosX")->SetText(this->geometry().x());
+        conf::window("PosY")->SetText(this->geometry().y());
 
         conf::instance().update_core();
     }
 
     if (event->type() == QEvent::Resize) {
-        auto winConf = conf::instance().core()->FirstChildElement("Window");
-        winConf->FirstChildElement("Width")->SetText(this->geometry().size().width());
-        winConf->FirstChildElement("Height")->SetText(this->geometry().size().height());
+        conf::window("Width")->SetText(this->geometry().size().width());
+        conf::window("Height")->SetText(this->geometry().size().height());
 
         conf::instance().update_core();
     }

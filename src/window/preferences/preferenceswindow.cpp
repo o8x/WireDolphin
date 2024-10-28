@@ -19,9 +19,7 @@ PreferencesWindow::PreferencesWindow(QWidget* parent)
         ui->languageList->addItem(value.c_str());
     }
 
-    const auto settingConf = conf::instance().core()->FirstChildElement("Preferences");
-    const int langChecked = settingConf->FirstChildElement("Language")->IntText();
-    ui->languageList->setCurrentIndex(langChecked);
+    ui->languageList->setCurrentIndex(conf::preferences("Language")->IntText());
 
     connect(ui->languageList, &QComboBox::currentIndexChanged, this, &PreferencesWindow::onLangListChange);
 }
@@ -33,8 +31,6 @@ PreferencesWindow::~PreferencesWindow()
 
 void PreferencesWindow::onLangListChange(const int index) const
 {
-    auto settingConf = conf::instance().core()->FirstChildElement("Preferences");
-    settingConf->FirstChildElement("Language")->SetText(index);
-
+    conf::preferences("Language")->SetText(index);
     conf::instance().update_core();
 }

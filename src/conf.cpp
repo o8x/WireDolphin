@@ -4,7 +4,6 @@
 #include <__filesystem/operations.h>
 #include <glog/logging.h>
 #include <qstandardpaths.h>
-#define CORE_CONFIG_FILENAME "Core.xml"
 
 conf::conf()
 {
@@ -82,6 +81,9 @@ std::vector<std::string> conf::get_recent_files() const
 
     // 查询是否已经存在过
     auto* head = list->FirstChildElement("Item");
+    if (head == nullptr) {
+        return res;
+    }
 
     do {
         res.emplace_back(head->GetText());
@@ -153,7 +155,9 @@ void conf::create_core_config()
     window->InsertNewChildElement("PosY")->SetText(50);
 
     auto* preferences = doc.NewElement("Preferences");
-    window->InsertNewChildElement("Language")->SetText(0);
+    preferences->InsertNewChildElement("Language")->SetText(0);
+    preferences->InsertNewChildElement("Sqlite3Database")
+        ->SetText(std::format("{}/WireDolphin.sqlite3", local_data_location()).c_str());
 
     doc.InsertEndChild(doc.NewElement("RecentFileList"));
     doc.InsertEndChild(preferences);
@@ -167,7 +171,18 @@ tinyxml2::XMLDocument* conf::core() const
     return core_;
 }
 
-tinyxml2::XMLElement* conf::preferences(const std::string& name){
-    tinyxml2::XMLElement* element = instance().core()->FirstChildElement("Preferences");
-    return element->FirstChildElement(name.c_str());
+tinyxml2::XMLElement* conf::window(const std::string& name)
+{
+    return core("Window", name);
+}
+
+tinyxml2::XMLElement* conf::preferences(const std::string& name)
+{
+    return core("Preferences", name);
+}
+
+tinyxml2::XMLElement* conf::core(const std::string& group, const std::string& key)
+{
+    tinyxml2::XMLElement* element = instance().core()->FirstChildElement(group.c_str());
+    return element->FirstChildElement(key.c_str());
 }

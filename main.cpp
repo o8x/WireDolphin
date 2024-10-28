@@ -10,7 +10,7 @@
 
 void initGlog(const char* argv0)
 {
-    auto baseDir = conf::instance().core()->FirstChildElement("Logger")->FirstChildElement("BaseDir");
+    const auto baseDir = conf::core("Logger", "BaseDir");
 
     google::InitGoogleLogging(argv0);
     FLAGS_minloglevel = google::INFO;
@@ -50,12 +50,11 @@ int main(int argc, char* argv[])
         initGlog(argv[0]);
 
         MainWindow window;
-        auto winConf = conf::instance().core()->FirstChildElement("Window");
 
         // QT 似乎无法实现 titlebar hidden inset 的效果，只能完全隐藏边框
         // w.setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
-        window.resize(winConf->FirstChildElement("Width")->IntText(), winConf->FirstChildElement("Height")->IntText());
-        window.move(winConf->FirstChildElement("PosX")->IntText(), winConf->FirstChildElement("PosY")->IntText());
+        window.resize(conf::window("Width")->IntText(), conf::window("Height")->IntText());
+        window.move(conf::window("PosX")->IntText(), conf::window("PosY")->IntText());
         // 在 Mac 下合并标题和工具栏
         window.setUnifiedTitleAndToolBarOnMac(true);
         window.setWindowTitle(TL_APP_TITLE.c_str());
