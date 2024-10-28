@@ -90,14 +90,14 @@ bool MainWindow::event(QEvent* event)
         conf::window("PosX")->SetText(this->geometry().x());
         conf::window("PosY")->SetText(this->geometry().y());
 
-        conf::instance().update_core();
+        conf::update();
     }
 
     if (event->type() == QEvent::Resize) {
         conf::window("Width")->SetText(this->geometry().size().width());
         conf::window("Height")->SetText(this->geometry().size().height());
 
-        conf::instance().update_core();
+        conf::update();
     }
 
     return QMainWindow::event(event);
@@ -332,7 +332,7 @@ void MainWindow::loadOfflinePcap(string filename) const
     packetSource->set_filename(filename);
     packetSource->start_on_interface(nullptr, interface);
 
-    conf::instance().auto_update([filename](tinyxml2::XMLDocument* core) {
+    conf::update([filename]() {
         conf::instance().append_recent_file(filename);
     });
 }

@@ -12,6 +12,9 @@
         }, {
             "name":      "tinyxml2",
             "version>=": "10.0.0"
+        }, {
+            "name":      "sqlite3",
+            "version>=": "3.47.0"
         }
     ]
 }

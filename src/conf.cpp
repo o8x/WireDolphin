@@ -27,12 +27,6 @@ void conf::update_core() const
     core_->SaveFile(core_config_name().c_str());
 }
 
-void conf::auto_update(const std::function<void(tinyxml2::XMLDocument*)>& fn) const
-{
-    fn(core_);
-    update_core();
-}
-
 // 单例模式加载配置文件
 // 该函数一定要在 QApplication 初始化完成之后调用
 // 否则 AppName 无法初始化，获取到的将是无效的路径
@@ -97,7 +91,7 @@ void conf::clear_recent() const
 {
     auto* list = core_->FirstChildElement("RecentFileList");
     core_->DeleteNode(list);
-    update_core();
+    update();
 }
 
 void conf::append_recent_file(const std::string& name) const
@@ -157,7 +151,7 @@ void conf::create_core_config()
     auto* preferences = doc.NewElement("Preferences");
     preferences->InsertNewChildElement("Language")->SetText(0);
     preferences->InsertNewChildElement("Sqlite3Database")
-        ->SetText(std::format("{}/WireDolphin.sqlite3", local_data_location()).c_str());
+        ->SetText(std::format("{}/AppData.sqlite3", local_data_location()).c_str());
 
     doc.InsertEndChild(doc.NewElement("RecentFileList"));
     doc.InsertEndChild(preferences);
@@ -185,4 +179,15 @@ tinyxml2::XMLElement* conf::core(const std::string& group, const std::string& ke
 {
     tinyxml2::XMLElement* element = instance().core()->FirstChildElement(group.c_str());
     return element->FirstChildElement(key.c_str());
+}
+
+void conf::update()
+{
+    instance().core_->SaveFile(core_config_name().c_str());
+}
+
+void conf::update(const std::function<void()>& fn)
+{
+    fn();
+    update();
 }
