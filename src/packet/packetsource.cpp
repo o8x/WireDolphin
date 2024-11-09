@@ -68,6 +68,11 @@ void PacketSource::free_wait()
 {
     this->running = false;
 
+    // 等待消费完成，避免 interface 提前被释放，capture_cycle_flush 事件会得到 null 的 interface
+    while (in_consume) {
+        this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
     if (this->interface != nullptr) {
         pcap_close(this->interface);
         this->interface = nullptr;
@@ -93,6 +98,8 @@ void PacketSource::free_wait()
 
 void PacketSource::consume_queue()
 {
+    in_consume = true;
+
     while (running) {
         auto now = std::chrono::steady_clock::now();
 
@@ -131,6 +138,8 @@ void PacketSource::consume_queue()
         // 一个捕获周期结束
         emit this->capture_cycle_flush(period_average, history.size() - 1);
     }
+
+    in_consume = false;
 }
 
 string PacketSource::get_dump_filename() const

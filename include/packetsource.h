@@ -81,6 +81,10 @@ class PacketSource final : public QObject {
      * 控制是否继续接收和处理包
      */
     bool running = false;
+    /**
+     * 当前是否还在消费
+     */
+    bool in_consume = false;
 
     void capture_packet();
     void dump_flush(const pcap_pkthdr*, const u_char*) const;
