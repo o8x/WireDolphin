@@ -1,4 +1,6 @@
 #include "packetsource.h"
+
+#include "db.h"
 #include "dissectors/arp.h"
 #include "dissectors/ethernet.h"
 #include "dissectors/icmp.h"
@@ -7,9 +9,11 @@
 #include "dissectors/tcp.h"
 #include "dissectors/udp.h"
 #include "interface.h"
+#include "locale.hpp"
 #include "utils.h"
 #include <QtCore/qcoreapplication.h>
 #include <__filesystem/operations.h>
+#include <functional>
 #include <glog/logging.h>
 #include <iostream>
 
@@ -25,6 +29,18 @@ PacketSource::PacketSource()
     bridge = std::queue<Packet*>();
     history = std::vector<Packet*>();
     last_access = std::chrono::steady_clock::now();
+
+    auto sql = "select hash from streams";
+    QUERY_SQL(sql, [sql, this](sqlite3_stmt* stmt, const char* msg) {
+        if (msg != nullptr) {
+            LOG(ERROR) << "SQL error: " << msg << " sql: " << sql << std::endl;
+            return;
+        }
+
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            streams.insert(string((char*)sqlite3_column_text(stmt, 0)));
+        }
+    });
 }
 
 void PacketSource::start_on_interface(pcap_if_t* device, pcap_t* interface)
@@ -67,6 +83,11 @@ void PacketSource::free_wait()
 {
     this->running = false;
 
+    // 等待消费完成，避免 interface 提前被释放，capture_cycle_flush 事件会得到 null 的 interface
+    while (in_consume) {
+        this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
     if (this->interface != nullptr) {
         pcap_close(this->interface);
         this->interface = nullptr;
@@ -92,6 +113,8 @@ void PacketSource::free_wait()
 
 void PacketSource::consume_queue()
 {
+    in_consume = true;
+
     while (running) {
         auto now = std::chrono::steady_clock::now();
 
@@ -125,11 +148,46 @@ void PacketSource::consume_queue()
 
             emit this->captured(history.size() - 1, p);
             dump_flush(p->get_header(), p->get_payload());
+            string hostSrc;
+            string hostDst;
+            int portSrc = 0;
+            int portDst = 0;
+
+            if (p->get_port_src() > p->get_port_dst()) {
+                hostSrc = p->get_host_src();
+                hostDst = p->get_host_dst();
+                portSrc = p->get_port_src();
+                portDst = p->get_port_dst();
+            } else {
+                hostSrc = p->get_host_dst();
+                hostDst = p->get_host_src();
+                portSrc = p->get_port_dst();
+                portDst = p->get_port_src();
+            }
+
+            const uint64_t fiveHash = hash_string(std::format("{}{}{}{}", hostSrc, hostDst, portSrc, portDst));
+
+            const time_t currTime = time(nullptr);
+            const auto pair = streams.insert(std::format("{}", fiveHash));
+            if (const bool done = pair.second; done) {
+                INSERT(std::format("insert into streams"
+                                   "(ip_version, hash, src_ip, src_port, dst_ip, dst_port, create_time, update_time) "
+                                   "values ({}, '{}', '{}', {}, '{}', {}, {}, {})",
+                    p->get_ip_version(), fiveHash, hostSrc, portSrc, hostDst, portDst, currTime, currTime));
+            }
+
+            UPDATE(std::format("update streams set "
+                               "total_length = total_length + {}, "
+                               "total_payload_length = total_payload_length + {}, update_time = {} "
+                               "where hash = '{}'",
+                p->get_len(), 0, currTime, fiveHash));
         }
 
         // 一个捕获周期结束
         emit this->capture_cycle_flush(period_average, history.size() - 1);
     }
+
+    in_consume = false;
 }
 
 string PacketSource::get_dump_filename() const
@@ -188,7 +246,7 @@ void PacketSource::capture_packet()
 
     emit listen_started({ .dump_filename = dump_filename,
         .interface_name = name,
-        .state = "on" });
+        .state = TL_ON });
 
     while (true) {
         if (!running || this->interface == nullptr) {
@@ -217,7 +275,7 @@ void PacketSource::capture_packet()
 
     emit listen_stopped({ .dump_filename = dump_filename,
         .interface_name = name,
-        .state = "off" });
+        .state = TL_OFF });
 }
 
 void PacketSource::dump_flush(const pcap_pkthdr* h, const u_char* sp) const

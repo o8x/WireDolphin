@@ -4,7 +4,6 @@
 #include <__filesystem/operations.h>
 #include <glog/logging.h>
 #include <qstandardpaths.h>
-#define CORE_CONFIG_FILENAME "Core.xml"
 
 conf::conf()
 {
@@ -26,12 +25,6 @@ conf::conf()
 void conf::update_core() const
 {
     core_->SaveFile(core_config_name().c_str());
-}
-
-void conf::auto_update(const std::function<void(tinyxml2::XMLDocument*)>& fn) const
-{
-    fn(core_);
-    update_core();
 }
 
 // 单例模式加载配置文件
@@ -82,6 +75,9 @@ std::vector<std::string> conf::get_recent_files() const
 
     // 查询是否已经存在过
     auto* head = list->FirstChildElement("Item");
+    if (head == nullptr) {
+        return res;
+    }
 
     do {
         res.emplace_back(head->GetText());
@@ -95,7 +91,7 @@ void conf::clear_recent() const
 {
     auto* list = core_->FirstChildElement("RecentFileList");
     core_->DeleteNode(list);
-    update_core();
+    update();
 }
 
 void conf::append_recent_file(const std::string& name) const
@@ -153,7 +149,9 @@ void conf::create_core_config()
     window->InsertNewChildElement("PosY")->SetText(50);
 
     auto* preferences = doc.NewElement("Preferences");
-    window->InsertNewChildElement("Language")->SetText(0);
+    preferences->InsertNewChildElement("Language")->SetText(0);
+    preferences->InsertNewChildElement("Sqlite3Database")
+        ->SetText(std::format("{}/AppData.sqlite3", local_data_location()).c_str());
 
     doc.InsertEndChild(doc.NewElement("RecentFileList"));
     doc.InsertEndChild(preferences);
@@ -167,7 +165,29 @@ tinyxml2::XMLDocument* conf::core() const
     return core_;
 }
 
-tinyxml2::XMLElement* conf::preferences(const std::string& name){
-    tinyxml2::XMLElement* element = instance().core()->FirstChildElement("Preferences");
-    return element->FirstChildElement(name.c_str());
+tinyxml2::XMLElement* conf::window(const std::string& name)
+{
+    return core("Window", name);
+}
+
+tinyxml2::XMLElement* conf::preferences(const std::string& name)
+{
+    return core("Preferences", name);
+}
+
+tinyxml2::XMLElement* conf::core(const std::string& group, const std::string& key)
+{
+    tinyxml2::XMLElement* element = instance().core()->FirstChildElement(group.c_str());
+    return element->FirstChildElement(key.c_str());
+}
+
+void conf::update()
+{
+    instance().core_->SaveFile(core_config_name().c_str());
+}
+
+void conf::update(const std::function<void()>& fn)
+{
+    fn();
+    update();
 }

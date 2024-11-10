@@ -3,6 +3,9 @@
 #include <__functional/function.h>
 #include <tinyxml2.h>
 
+#define CORE_CONFIG_FILENAME "Core.xml"
+#define DB_FILE conf::preferences("Sqlite3Database")->GetText()
+
 class conf {
     tinyxml2::XMLDocument* core_ = nullptr; // 符合 google 命名规范
 
@@ -23,5 +26,9 @@ public:
     void append_recent_file(const std::string& name) const;
     static void create_core_config();
     [[nodiscard]] tinyxml2::XMLDocument* core() const;
+    static tinyxml2::XMLElement* window(const std::string& name);
     static tinyxml2::XMLElement* preferences(const std::string& name);
+    static tinyxml2::XMLElement* core(const std::string& group, const std::string& key);
+    static void update();
+    static void update(const std::function<void()>& fn) ;
 };

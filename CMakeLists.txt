@@ -62,6 +62,8 @@ add_executable(${PROJECT_NAME}
         include/preferenceswindow.h
         src/window/preferences/preferenceswindow.cpp
         src/window/preferences/preferenceswindow.ui
+        include/db.h
+        src/db.cpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -90,6 +92,10 @@ pkg_check_modules(VCPKG_DEPS REQUIRED libpcap tinyxml2)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${VCPKG_DEPS_LIBRARIES})
 target_link_directories(${PROJECT_NAME} PRIVATE ${VCPKG_DEPS_LIBRARY_DIRS})
 target_include_directories(${PROJECT_NAME} PRIVATE ${VCPKG_DEPS_INCLUDE_DIRS})
+
+# sqlite
+find_package(unofficial-sqlite3 CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::sqlite3::sqlite3)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
         ${BUNDLE_ID_OPTION}

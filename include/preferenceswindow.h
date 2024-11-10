@@ -13,6 +13,7 @@ class PreferencesWindow : public QWidget {
 
 public:
     explicit PreferencesWindow(QWidget* parent = nullptr);
+    void openDBFileSelection() const;
     ~PreferencesWindow() override;
     void onLangListChange(int index) const;
 

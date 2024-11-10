@@ -6,18 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
-- 引入 PcapPlusPlush 以支持 DPDK
-- 支持外挂采集数据的 Agent，通过 zmq 传输抓包数据
-- 分离前后端，QT 只做展示端
-- 流量分级（可接受，安全，未分级，不安全）
+### High priority
+
+- 支持数据包对指定网卡重放，具有按钮和实时重放进度(对重放中的包所在行着色)
+- 解决特定场景下应用崩溃的问题
 - Top 主机
 - Top 应用
 - Top 会话
 - 活动流（应用，连接状态、类型，掩码等维度的筛选）
+- 主机纳管（机器名，操作系统，网段，活动流，地理位置，评分等统计）
+- 网卡、会话、IP维度的指标统计
+
+### Other
+
+- 引入 PcapPlusPlush 以支持 DPDK
+- 支持外挂采集数据的 Agent，通过 zmq 传输抓包数据
+- 分离前后端，QT 只做展示端
+- 流量分级（可接受，安全，未分级，不安全）
 - 主机监控
 - 网内扫描
 - 数据警告（流，主机，会话，主机监控，系统等维度）
-- 主机纳管（机器名，操作系统，网段，活动流，地理位置，评分等统计）
 - 接口流量记录
 - 统计视图（初步建设已完成，暂时搁置）
 - OOP with PImpl 改造
@@ -28,10 +36,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - HTTPS 握手识别
 - 会话交易分析
 - 代理协议解析(socks5)
-- 网卡、会话、IP维度的指标统计
 - TCP 分段丢失、乱序、重传识别
 - VLAN 识别（包含多层）
-- 支持数据包对指定网卡重放
 - 跨平台支持（WinPcap）
 - TableWidget 改成自定义 TableView，实现手动影响表格渲染，彻底解决表格渲染性能问题
 
