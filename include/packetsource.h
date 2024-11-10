@@ -4,6 +4,7 @@
 #include <QThread>
 #include <pcap.h>
 #include <queue>
+#include <set>
 
 // 更新表格超时周期
 #define DEFAULT_QUEUE_UPDATE_TIMEOUT_MS 10
@@ -21,6 +22,11 @@ typedef struct packetsource_state {
 
 class PacketSource final : public QObject {
     Q_OBJECT
+
+    /**
+     * 数据需要主动读取到该 set 中
+     */
+    std::set<std::string> streams = {};
 
     /**
      * 全局互斥锁

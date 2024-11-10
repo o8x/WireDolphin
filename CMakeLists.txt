@@ -62,6 +62,8 @@ add_executable(${PROJECT_NAME}
         include/preferenceswindow.h
         src/window/preferences/preferenceswindow.cpp
         src/window/preferences/preferenceswindow.ui
+        include/db.h
+        src/db.cpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

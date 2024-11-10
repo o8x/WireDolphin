@@ -123,3 +123,8 @@ string is_restful_request(std::istringstream& stream)
 
     return "";
 }
+
+uint64_t hash_string(const std::string& s) {
+    constexpr std::hash<std::string> h;
+    return h(s);
+}

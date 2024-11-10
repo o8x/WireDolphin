@@ -1,4 +1,5 @@
 #include "conf.h"
+#include "db.h"
 #include "locale.hpp"
 
 #include <QApplication>
@@ -43,6 +44,8 @@ int main(int argc, char* argv[])
         if (!conf::instance().check_core_config()) {
             throw runtime_error(std::format("Core Profile is corrupt, Repair or remove \"{}\".", conf::core_config_name()));
         }
+
+        db::instance().init(DB_FILE);
 
         // 设置语言
         lc::Locale::setLocale(static_cast<lc::Locales>(conf::preferences("Language")->IntText()));
