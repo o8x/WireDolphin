@@ -37,6 +37,7 @@ MainWindow::MainWindow(QWidget* parent)
     statsWindow = new StatsWindow();
     statsWindow->packetSource = packetSource;
     statsWindow->initGraph();
+    preferencesWindow = new PreferencesWindow();
 
     initMenus();
     initWindow();
@@ -265,7 +266,7 @@ void MainWindow::initWidgets()
     ui->startBtn->setText(TL_START.c_str());
     ui->resetBtn->setText(TL_RESET.c_str());
 
-    this->preferencesWindow.setWindowTitle(TL_PREFERENCES.c_str());
+    this->preferencesWindow->setWindowTitle(TL_PREFERENCES.c_str());
 }
 
 void MainWindow::acceptPacket(const int row, Packet* packet) const
@@ -750,9 +751,9 @@ void MainWindow::initMenus()
     preferencesAction = new QAction("Preferences");
     preferencesAction->setMenuRole(QAction::PreferencesRole);
     connect(preferencesAction, &QAction::triggered, [this] {
-        preferencesWindow.raise();
-        preferencesWindow.show();
-        preferencesWindow.activateWindow();
+        preferencesWindow->raise();
+        preferencesWindow->show();
+        preferencesWindow->activateWindow();
     });
 
     helpMenu->addAction(preferencesAction);

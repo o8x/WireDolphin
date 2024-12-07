@@ -69,7 +69,7 @@ private:
     QMenu* hexTableMenu = nullptr;
     TrayIcon* trayIcon = nullptr;
     StatsWindow* statsWindow = nullptr;
-    PreferencesWindow preferencesWindow;
+    PreferencesWindow* preferencesWindow;
     QMenu* fileMenu = nullptr;
     QMenu* helpMenu = nullptr;
     QMenu* windowMenu = nullptr;
