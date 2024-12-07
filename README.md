@@ -27,7 +27,7 @@
 </a>
 </p>
 
-## Features
+# Overview
 
 a Simple Wireshark Based on libpcap
 
@@ -42,25 +42,38 @@ a Simple Wireshark Based on libpcap
 - Export & Import for .pcap file
 - Signed dmg
 
+## Architecture diagram
+
+<img src="https://cdn-1252251443.cos.ap-nanjing.myqcloud.com/x/1733587226580.png" width="50%">
+
+## Function Detail
+
+- Hardware: Ethernet Controller, example: intel I350
+- GUI: User Interface 
+- Capture: get and analyzer data packets
+- innta: Intelligent network traffic analyzer Core
+- Data Storage: XML and sqlite3
+- Export: .pcap
+
 ## Next Generation Features
 
 - distributed
 - introducing DPDK
 - like ntopng
 
-## Reference
+# Reference
 
 - [Bug Tracker Project](https://github.com/users/o8x/projects/3)
 - [Roadmap Project](https://github.com/users/o8x/projects/4)
 - [CHANGELOG.md](CHANGELOG.md)
 
-## Contributors
+# Contributors
 
 <a href="https://github.com/o8x/WireDolphin/graphs/contributors">
 	<img src="https://contrib.rocks/image?repo=o8x/WireDolphin" />
 </a>
 
-## Stargazers over time
+# Stargazers over time
 
 <a href="https://star-history.com/#o8x/WireDolphin&Date">
   <picture>
