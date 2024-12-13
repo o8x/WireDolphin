@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.28.6)
 
-set(CMAKE_PROJECT_NAME WireDolphin)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
@@ -17,54 +16,17 @@ set(CMAKE_TOOLCHAIN_FILE $ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
 
 project(WireDolphin VERSION 0.1.0 LANGUAGES CXX)
 
-include_directories(include)
-add_executable(${PROJECT_NAME}
-        main.cpp
-        include/packetsource.h
-        include/utils.h
-        include/Packet.h
-        include/mainwindow.h
-        include/interface.h
-        include/dissectors/ipv4.h
-        include/dissectors/ipv6.h
-        include/dissectors/ethernet.h
-        src/packet/packetsource.cpp
-        src/utils/utils.cpp
-        src/packet/packet.cpp
-        src/window/mainwindow.cpp
-        src/window/mainwindow.ui
-        src/interface.cpp
-        src/dissectors/ipv4.cpp
-        src/dissectors/ipv6.cpp
-        src/dissectors/tcp.cpp
-        include/dissectors/tcp.h
-        include/dissectors/arp.h
-        src/dissectors/arp.cpp
-        src/dissectors/udp.cpp
-        include/dissectors/udp.h
-        include/dissectors/http.h
-        src/dissectors/http.cpp
-        include/statswindow.h
-        src/window/stats/statswindow.cpp
-        src/window/stats/statswindow.ui
-        src/qcustomplot.cpp
-        include/qcustomplot.h
-        src/axistag.cpp
-        include/axistag.h
-        include/trayicon.h
-        src/trayicon.cpp
-        include/conf.h
-        src/conf.cpp
-        include/dissectors/icmp.h
-        src/dissectors/icmp.cpp
-        resources/resources.qrc
-        include/locale.hpp
-        include/preferenceswindow.h
-        src/window/preferences/preferenceswindow.cpp
-        src/window/preferences/preferenceswindow.ui
-        include/db.h
-        src/db.cpp
+file(GLOB SOURCE_FILES
+        include/*.h
+        innta/view/*.h
+        innta/view/*.ui
+        innta/view/*.cc
+        innta/*.cc
+        innta/parser/*.cc
 )
+
+include_directories(include innta)
+add_executable(${PROJECT_NAME} main.cc ${SOURCE_FILES})
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DDEBUG_BUILD)
@@ -115,7 +77,7 @@ install(TARGETS ${PROJECT_NAME}
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.icns"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hack/icon.icns"
         "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/icon.icns"
 )
 

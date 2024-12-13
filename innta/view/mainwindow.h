@@ -1,16 +1,10 @@
 #pragma once
 
-#include <QCloseEvent>
-#include <QLabel>
-#include <QMainWindow>
-#include <QStandardItemModel>
-#include <QSystemTrayIcon>
-#include <QTreeWidgetItem>
-
 #include "packetsource.h"
+#include "preferenceswindow.h"
 #include "statswindow.h"
 #include "trayicon.h"
-#include <preferenceswindow.h>
+#include <QCloseEvent>
 
 #define SNAP_LEN 128 * 1024 * 1024
 #define PROMISC 1
