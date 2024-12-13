@@ -5,9 +5,7 @@
 #include <QApplication>
 #include <fstream>
 #include <glog/logging.h>
-#include <iostream>
-#include <mainwindow.h>
-#include <unistd.h>
+#include "view/mainwindow.h"
 
 void initGlog(const char* argv0)
 {

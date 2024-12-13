@@ -3,7 +3,7 @@
 #include "axistag.h"
 #include "packetsource.h"
 
-#include <qcustomplot.h>
+#include "view/qcustomplot.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -26,15 +26,15 @@ public:
     void initGraph();
     ~StatsWindow() override;
     void acceptPacket(const int index, const Packet* packet);
-    PacketSource* packetSource;
+    PacketSource* packetSource {};
 
 protected:
     bool event(QEvent* event) override;
 
 private:
     Ui::stats* ui;
-    int packetNum;
-    int tcpPacketNum;
+    int packetNum {};
+    int tcpPacketNum {};
 };
 
 #endif // STATS_H

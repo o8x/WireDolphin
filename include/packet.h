@@ -4,11 +4,11 @@
 #include <string>
 #include <vector>
 
-#include "dissectors/arp.h"
-#include "dissectors/ipv4.h"
-#include "dissectors/ipv6.h"
-#include "dissectors/tcp.h"
-#include "dissectors/udp.h"
+#include "parser/arp.h"
+#include "parser/ipv4.h"
+#include "parser/ipv6.h"
+#include "parser/tcp.h"
+#include "parser/udp.h"
 
 using namespace std;
 

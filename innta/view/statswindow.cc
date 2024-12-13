@@ -2,13 +2,12 @@
 #include "ui_statswindow.h"
 
 #include <glog/logging.h>
-#include <iostream>
 
 StatsWindow::StatsWindow(QWidget* parent)
     : QWidget(parent)
-    , ui(new Ui::stats)
     , mTag1(0)
     , mTag2(0)
+    , ui(new Ui::stats)
 {
     ui->setupUi(this);
 }
